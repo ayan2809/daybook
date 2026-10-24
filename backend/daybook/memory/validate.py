@@ -12,18 +12,52 @@ _WS = re.compile(r"\s+")
 _EDGE_PUNCT = " \t\n.,;:!?\"'“”‘’()[]-–—"
 
 WORD_NUMBERS = {
-    "zero": 0, "none": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
-    "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "fifteen": 15,
-    "twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
-    "eighty": 80, "ninety": 90, "hundred": 100, "thousand": 1000, "half": 50, "double": 2,
-    "twice": 2, "triple": 3, "a dozen": 12, "dozen": 12,
+    "zero": 0,
+    "none": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "fifteen": 15,
+    "twenty": 20,
+    "thirty": 30,
+    "forty": 40,
+    "fifty": 50,
+    "sixty": 60,
+    "seventy": 70,
+    "eighty": 80,
+    "ninety": 90,
+    "hundred": 100,
+    "thousand": 1000,
+    "half": 50,
+    "double": 2,
+    "twice": 2,
+    "triple": 3,
+    "a dozen": 12,
+    "dozen": 12,
 }
 _NUM = re.compile(
     r"(?<![\w.])(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(k|m|mn|million|lakh|lakhs|crore|cr|x|%)?",
     re.IGNORECASE,
 )
-_MULT = {"k": 1e3, "m": 1e6, "mn": 1e6, "million": 1e6, "lakh": 1e5, "lakhs": 1e5,
-         "crore": 1e7, "cr": 1e7}
+_MULT = {
+    "k": 1e3,
+    "m": 1e6,
+    "mn": 1e6,
+    "million": 1e6,
+    "lakh": 1e5,
+    "lakhs": 1e5,
+    "crore": 1e7,
+    "cr": 1e7,
+}
 
 
 def norm_text(s: str) -> str:
@@ -91,10 +125,36 @@ def numbers_unsupported(text: str, sources: list[str]) -> list[str]:
 # ------------------------------------------------------------------ deltas
 
 
-_DOWN_WORDS = ("drop", "reduc", "cut", "fell", "fall", "faster", "lower", "less", "fewer",
-               "decreas", "down", "saved", "shrank", "shrunk", "quicker")
-_UP_WORDS = ("increas", "grew", "grow", "up ", "more", "higher", "faster", "improv", "boost",
-             "rose", "gain")
+_DOWN_WORDS = (
+    "drop",
+    "reduc",
+    "cut",
+    "fell",
+    "fall",
+    "faster",
+    "lower",
+    "less",
+    "fewer",
+    "decreas",
+    "down",
+    "saved",
+    "shrank",
+    "shrunk",
+    "quicker",
+)
+_UP_WORDS = (
+    "increas",
+    "grew",
+    "grow",
+    "up ",
+    "more",
+    "higher",
+    "faster",
+    "improv",
+    "boost",
+    "rose",
+    "gain",
+)
 
 
 @dataclass
@@ -154,7 +214,11 @@ def metric_display(m: dict) -> str:
     u = "" if unit in ("%", "count", "") else f" {unit}"
     approx = "~" if m.get("approx") else ""
     pct = m.get("delta_pct")
-    pct_s = f"{'+' if pct > 0 else '−' if pct < 0 else ''}{fmt_num(abs(pct))}%" if pct is not None else ""
+    pct_s = (
+        f"{'+' if pct > 0 else '−' if pct < 0 else ''}{fmt_num(abs(pct))}%"
+        if pct is not None
+        else ""
+    )
     b, f = m.get("baseline"), m.get("final")
     if unit.lower() in ("x", "times") and f is not None and (b in (None, 1, 1.0)):
         return f"{approx}{fmt_num(f)}x"

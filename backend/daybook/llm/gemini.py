@@ -42,10 +42,11 @@ class LLMResponse:
     finish_reason: str = "STOP"
     blocked: bool = False  # prompt blocked or the reply stopped for SAFETY
     latency_ms: int = 0
+    free: bool = False  # fakes: tokens are reported, but nothing is billed
 
     @property
     def cost_usd(self) -> float:
-        return llm_cost(self.model, self.tokens_in, self.tokens_out)
+        return 0.0 if self.free else llm_cost(self.model, self.tokens_in, self.tokens_out)
 
 
 class LLM(Protocol):
@@ -202,7 +203,7 @@ class GeminiTTS:
             timeout=self.timeout_s,
         )
         part = resp.candidates[0].content.parts[0].inline_data
-        data, mime = part.data, (part.mime_type or "")
+        data = part.data
         if not data.startswith(b"RIFF"):  # raw PCM: wrap it
             from daybook.voice.wav import pcm_to_wav
 

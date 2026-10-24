@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any
 
 from google.genai import types
 from pydantic import BaseModel
@@ -11,8 +11,6 @@ from pydantic import BaseModel
 from daybook.llm.gemini import LLM, LLMResponse, model_text, user_text
 from daybook.obs.tracer import Trace
 from daybook.settings import Settings
-
-T = TypeVar("T", bound=BaseModel)
 
 
 @dataclass
@@ -31,7 +29,7 @@ def history(turns: list[dict], limit: int = 12) -> list[types.Content]:
     return out
 
 
-async def structured(
+async def structured[T: BaseModel](
     deps: Deps,
     trace: Trace | None,
     span_name: str,

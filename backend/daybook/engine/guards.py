@@ -10,13 +10,30 @@ from dataclasses import dataclass, field
 
 from daybook.memory.validate import numbers_unsupported
 
-ADVICE = ("you should", "try to", "i'd recommend", "i would recommend", "have you considered",
-          "you might want to", "you could try", "my advice", "make sure you", "consider ")
-ASKED_FOR_ADVICE = ("should i", "any advice", "what do you think", "what would you do",
-                    "any tips", "suggest", "recommend")
+ADVICE = (
+    "you should",
+    "try to",
+    "i'd recommend",
+    "i would recommend",
+    "have you considered",
+    "you might want to",
+    "you could try",
+    "my advice",
+    "make sure you",
+    "consider ",
+)
+ASKED_FOR_ADVICE = (
+    "should i",
+    "any advice",
+    "what do you think",
+    "what would you do",
+    "any tips",
+    "suggest",
+    "recommend",
+)
 MISSED = ("miss", "anything else", "leave out", "left out", "forget anything", "forgot")
 _MD = re.compile(r"(^\s*[-*•]\s+|^\s*\d+\.\s+|^#+\s*|\*\*|__|`|https?://\S+)", re.M)
-_EMOJI = re.compile("[\U0001F300-\U0001FAFF☀-➿️]")
+_EMOJI = re.compile("[\U0001f300-\U0001faff☀-➿️]")
 _STOP = {"the", "a", "an", "for", "of", "to", "and", "your", "on", "in", "with", "you", "my"}
 
 
@@ -67,7 +84,7 @@ CORRECTIONS = {
     "no_advice": "Don't give advice or suggestions.",
     "fidelity": "Only use numbers that appear in the user's words or the operator note. Don't add any.",
     "phase": "Read back what you captured, name each open question you'll ask tomorrow, and ask "
-             "whether you missed anything.",
+    "whether you missed anything.",
 }
 
 

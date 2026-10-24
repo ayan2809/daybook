@@ -15,14 +15,54 @@ from typing import Any
 from daybook.memory.validate import compute_deltas, metric_display
 
 ITEM_FIELDS = (
-    "kind", "status", "occurred_on", "project_id", "title", "what", "how", "result", "bullet",
-    "scope", "impact", "quantifiable", "ownership", "source_quote", "source_turn_seqs",
-    "validation_note", "merged_into",
+    "kind",
+    "status",
+    "occurred_on",
+    "project_id",
+    "title",
+    "what",
+    "how",
+    "result",
+    "bullet",
+    "scope",
+    "impact",
+    "quantifiable",
+    "ownership",
+    "source_quote",
+    "source_turn_seqs",
+    "validation_note",
+    "merged_into",
 )
-EDITABLE = ("title", "what", "how", "result", "bullet", "kind", "ownership", "occurred_on",
-            "scope", "impact", "quantifiable", "status", "project_id", "validation_note")
-METRIC_FIELDS = ("name", "category", "unit", "baseline", "final", "delta_abs", "delta_pct",
-                 "better_when", "period", "approx", "is_derived", "source_text")
+EDITABLE = (
+    "title",
+    "what",
+    "how",
+    "result",
+    "bullet",
+    "kind",
+    "ownership",
+    "occurred_on",
+    "scope",
+    "impact",
+    "quantifiable",
+    "status",
+    "project_id",
+    "validation_note",
+)
+METRIC_FIELDS = (
+    "name",
+    "category",
+    "unit",
+    "baseline",
+    "final",
+    "delta_abs",
+    "delta_pct",
+    "better_when",
+    "period",
+    "approx",
+    "is_derived",
+    "source_text",
+)
 
 
 def now_iso() -> str:
@@ -47,8 +87,13 @@ def upsert_profile(conn: sqlite3.Connection, **fields: Any) -> None:
         conn.execute(
             "INSERT INTO profile (id, display_name, timezone, org, role_title, created_at)"
             " VALUES (1, ?, ?, ?, ?, ?)",
-            (fields.get("display_name"), fields.get("timezone") or "Asia/Kolkata",
-             fields.get("org"), fields.get("role_title"), now_iso()),
+            (
+                fields.get("display_name"),
+                fields.get("timezone") or "Asia/Kolkata",
+                fields.get("org"),
+                fields.get("role_title"),
+                now_iso(),
+            ),
         )
         return
     for k in ("display_name", "timezone", "org", "role_title"):
@@ -138,8 +183,15 @@ def insert_turns(conn: sqlite3.Connection, sid: str, turns: list[dict]) -> None:
         conn.execute(
             "INSERT OR IGNORE INTO turns (session_id, seq, role, text, intent, dictated_chars,"
             " created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (sid, t["seq"], t["role"], t["text"], t.get("intent"), t.get("dictated_chars"),
-             t.get("created_at") or now_iso()),
+            (
+                sid,
+                t["seq"],
+                t["role"],
+                t["text"],
+                t.get("intent"),
+                t.get("dictated_chars"),
+                t.get("created_at") or now_iso(),
+            ),
         )
 
 
@@ -158,9 +210,7 @@ def reflected_dates(conn: sqlite3.Connection, since: str) -> set[str]:
 
 
 def _metric_rows(conn: sqlite3.Connection, item_id: int) -> list[dict]:
-    out = rows(conn.execute(
-        "SELECT * FROM metrics WHERE item_id = ? ORDER BY id", (item_id,)
-    ))
+    out = rows(conn.execute("SELECT * FROM metrics WHERE item_id = ? ORDER BY id", (item_id,)))
     for m in out:
         m["approx"] = bool(m["approx"])
         m["is_derived"] = bool(m["is_derived"])
@@ -169,16 +219,21 @@ def _metric_rows(conn: sqlite3.Connection, item_id: int) -> list[dict]:
 
 
 def _skills(conn: sqlite3.Connection, item_id: int) -> list[str]:
-    return [r["name"] for r in conn.execute(
-        "SELECT s.name FROM item_skills i JOIN skills s ON s.id = i.skill_id WHERE i.item_id = ?"
-        " ORDER BY s.name", (item_id,)
-    )]
+    return [
+        r["name"]
+        for r in conn.execute(
+            "SELECT s.name FROM item_skills i JOIN skills s ON s.id = i.skill_id WHERE i.item_id = ?"
+            " ORDER BY s.name",
+            (item_id,),
+        )
+    ]
 
 
 def get_item(conn: sqlite3.Connection, item_id: int, full: bool = True) -> dict | None:
     r = conn.execute(
         "SELECT i.*, p.name AS project_name FROM memory_items i"
-        " LEFT JOIN projects p ON p.id = i.project_id WHERE i.id = ?", (item_id,)
+        " LEFT JOIN projects p ON p.id = i.project_id WHERE i.id = ?",
+        (item_id,),
     ).fetchone()
     return _item_dict(conn, r, full) if r else None
 
@@ -186,7 +241,9 @@ def get_item(conn: sqlite3.Connection, item_id: int, full: bool = True) -> dict 
 def _item_dict(conn: sqlite3.Connection, r: sqlite3.Row, full: bool = True) -> dict:
     d = dict(r)
     d["source_turn_seqs"] = json.loads(d["source_turn_seqs"])
-    d["project"] = {"id": d["project_id"], "name": d.pop("project_name")} if d["project_id"] else None
+    d["project"] = (
+        {"id": d["project_id"], "name": d.pop("project_name")} if d["project_id"] else None
+    )
     d.pop("project_name", None)
     if full:
         d["metrics"] = _metric_rows(conn, d["id"])
@@ -242,9 +299,7 @@ def snapshot(conn: sqlite3.Connection, item_id: int) -> dict:
     r = conn.execute("SELECT * FROM memory_items WHERE id = ?", (item_id,)).fetchone()
     snap = {k: r[k] for k in ITEM_FIELDS}
     snap["source_turn_seqs"] = json.loads(snap["source_turn_seqs"])
-    snap["metrics"] = [
-        {k: m[k] for k in METRIC_FIELDS} for m in _metric_rows(conn, item_id)
-    ]
+    snap["metrics"] = [{k: m[k] for k in METRIC_FIELDS} for m in _metric_rows(conn, item_id)]
     snap["skills"] = _skills(conn, item_id)
     return snap
 
@@ -312,9 +367,12 @@ def update_item(
         add_metric(conn, item_id, m)
     if skills is not None:
         set_skills(conn, item_id, skills)
-    version = conn.execute(
-        "SELECT version FROM memory_items WHERE id = ?", (item_id,)
-    ).fetchone()["version"] + 1
+    version = (
+        conn.execute("SELECT version FROM memory_items WHERE id = ?", (item_id,)).fetchone()[
+            "version"
+        ]
+        + 1
+    )
     sets += ["version = ?", "updated_at = ?"]
     args += [version, now_iso()]
     conn.execute(f"UPDATE memory_items SET {', '.join(sets)} WHERE id = ?", [*args, item_id])
@@ -332,16 +390,24 @@ def restore_version(conn: sqlite3.Connection, item_id: int, version: int) -> int
     snap = json.loads(r["snapshot"])
     fields = {k: snap[k] for k in EDITABLE if k in snap}
     return update_item(
-        conn, item_id, fields, "restore", f"restored version {version}",
-        metrics=snap.get("metrics", []), skills=snap.get("skills", []),
+        conn,
+        item_id,
+        fields,
+        "restore",
+        f"restored version {version}",
+        metrics=snap.get("metrics", []),
+        skills=snap.get("skills", []),
     )
 
 
 def item_versions(conn: sqlite3.Connection, item_id: int) -> list[dict]:
-    out = rows(conn.execute(
-        "SELECT version, changed_by, reason, created_at, snapshot FROM memory_item_versions"
-        " WHERE item_id = ? ORDER BY version DESC", (item_id,)
-    ))
+    out = rows(
+        conn.execute(
+            "SELECT version, changed_by, reason, created_at, snapshot FROM memory_item_versions"
+            " WHERE item_id = ? ORDER BY version DESC",
+            (item_id,),
+        )
+    )
     for v in out:
         v["snapshot"] = json.loads(v["snapshot"])
     return out
@@ -370,15 +436,22 @@ def add_link(conn: sqlite3.Connection, from_id: int, to_id: int, kind: str) -> N
 
 def _metric_values(m: dict) -> dict:
     d = compute_deltas(
-        m.get("baseline"), m.get("final"), m.get("delta_pct"), m.get("unit"),
-        m.get("better_when") or "higher", m.get("source_text") or "",
+        m.get("baseline"),
+        m.get("final"),
+        m.get("delta_pct"),
+        m.get("unit"),
+        m.get("better_when") or "higher",
+        m.get("source_text") or "",
     )
     delta_abs = d.delta_abs if d.delta_abs is not None else m.get("delta_abs")
     return {
         "name": (m.get("name") or "result")[:120],
         "category": m.get("category") or "other",
         "unit": m.get("unit") or "count",
-        "baseline": d.baseline, "final": d.final, "delta_abs": delta_abs, "delta_pct": d.delta_pct,
+        "baseline": d.baseline,
+        "final": d.final,
+        "delta_abs": delta_abs,
+        "delta_pct": d.delta_pct,
         "better_when": m.get("better_when") or "higher",
         "period": m.get("period"),
         "approx": int(bool(m.get("approx"))),
@@ -426,14 +499,19 @@ def update_metric(conn: sqlite3.Connection, item_id: int, m: dict) -> None:
 
 
 def _pending_dicts(conn, sql: str, args) -> list[dict]:
-    return rows(conn.execute(
-        "SELECT q.*, i.title AS item_title FROM pending_questions q"
-        " LEFT JOIN memory_items i ON i.id = q.item_id " + sql, args
-    ))
+    return rows(
+        conn.execute(
+            "SELECT q.*, i.title AS item_title FROM pending_questions q"
+            " LEFT JOIN memory_items i ON i.id = q.item_id " + sql,
+            args,
+        )
+    )
 
 
 def pending_for_item(conn: sqlite3.Connection, item_id: int) -> list[dict]:
-    return _pending_dicts(conn, "WHERE q.item_id = ? AND q.status = 'open' ORDER BY q.id", (item_id,))
+    return _pending_dicts(
+        conn, "WHERE q.item_id = ? AND q.status = 'open' ORDER BY q.id", (item_id,)
+    )
 
 
 def get_pending(conn: sqlite3.Connection, pid: int) -> dict | None:
@@ -476,7 +554,9 @@ def resolve_pending(
     )
 
 
-def snooze_pending(conn: sqlite3.Connection, pid: int, until: str, answer_text: str | None = None) -> None:
+def snooze_pending(
+    conn: sqlite3.Connection, pid: int, until: str, answer_text: str | None = None
+) -> None:
     conn.execute(
         "UPDATE pending_questions SET snooze_until = ?, answer_text = coalesce(?, answer_text)"
         " WHERE id = ?",
@@ -490,11 +570,13 @@ def mark_asked(conn: sqlite3.Connection, pids: list[int], max_asks: int = 3) -> 
     for pid in pids:
         conn.execute(
             "UPDATE pending_questions SET times_asked = times_asked + 1, last_asked_at = ?"
-            " WHERE id = ?", (ts, pid),
+            " WHERE id = ?",
+            (ts, pid),
         )
         conn.execute(
             "UPDATE pending_questions SET status = 'expired', resolved_at = ?"
-            " WHERE id = ? AND status = 'open' AND times_asked >= ?", (ts, pid, max_asks),
+            " WHERE id = ? AND status = 'open' AND times_asked >= ?",
+            (ts, pid, max_asks),
         )
 
 
@@ -547,8 +629,11 @@ def docs_needing_update(
     """Read-only. Returns (docs to (re)embed, item ids whose doc must be dropped because the item
     is hidden or merged)."""
     out, drop = [], []
-    items = list_items(conn, ids=item_ids, include_hidden=True) if item_ids is not None else \
-        list_items(conn, include_hidden=True, limit=100_000)
+    items = (
+        list_items(conn, ids=item_ids, include_hidden=True)
+        if item_ids is not None
+        else list_items(conn, include_hidden=True, limit=100_000)
+    )
     for it in items:
         if it["status"] in ("hidden", "merged"):
             if conn.execute(
@@ -563,9 +648,15 @@ def docs_needing_update(
             (it["id"],),
         ).fetchone()
         if not cur or cur["content_hash"] != h or cur["embedding"] is None:
-            out.append({"doc_type": "item", "ref_id": it["id"], "text": text,
-                        "occurred_on": it["occurred_on"],
-                        "project_id": it["project"]["id"] if it["project"] else None})
+            out.append(
+                {
+                    "doc_type": "item",
+                    "ref_id": it["id"],
+                    "text": text,
+                    "occurred_on": it["occurred_on"],
+                    "project_id": it["project"]["id"] if it["project"] else None,
+                }
+            )
     if item_ids is None:
         for d in rows(conn.execute("SELECT * FROM digests")):
             text = f"{d['period_start']} · {d['kind']} summary: {d['text']}"
@@ -575,20 +666,37 @@ def docs_needing_update(
                 (d["id"],),
             ).fetchone()
             if not cur or cur["content_hash"] != h or cur["embedding"] is None:
-                out.append({"doc_type": "digest", "ref_id": d["id"], "text": text,
-                            "occurred_on": d["period_start"], "project_id": None})
+                out.append(
+                    {
+                        "doc_type": "digest",
+                        "ref_id": d["id"],
+                        "text": text,
+                        "occurred_on": d["period_start"],
+                        "project_id": None,
+                    }
+                )
     return out, drop
 
 
-def upsert_doc(conn: sqlite3.Connection, doc: dict, embedding: bytes | None, embed_model: str) -> int:
+def upsert_doc(
+    conn: sqlite3.Connection, doc: dict, embedding: bytes | None, embed_model: str
+) -> int:
     conn.execute(
         "INSERT INTO docs (doc_type, ref_id, text, occurred_on, project_id, embedding, embed_model,"
         " content_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(doc_type, ref_id) DO UPDATE SET"
         " text = excluded.text, occurred_on = excluded.occurred_on, project_id ="
         " excluded.project_id, embedding = excluded.embedding, embed_model = excluded.embed_model,"
         " content_hash = excluded.content_hash",
-        (doc["doc_type"], doc["ref_id"], doc["text"], doc["occurred_on"], doc["project_id"],
-         embedding, embed_model, content_hash(doc["text"])),
+        (
+            doc["doc_type"],
+            doc["ref_id"],
+            doc["text"],
+            doc["occurred_on"],
+            doc["project_id"],
+            embedding,
+            embed_model,
+            content_hash(doc["text"]),
+        ),
     )
     return conn.execute(
         "SELECT id FROM docs WHERE doc_type = ? AND ref_id = ?", (doc["doc_type"], doc["ref_id"])

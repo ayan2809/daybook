@@ -66,27 +66,34 @@ async def find(
         with vault.read() as conn:
             res = retrieval.search(conn, qvec, hint, embedder.model_name, date_window=window, k=5)
             items = {h.ref_id: repo.get_item(conn, h.ref_id) for h in res.hits[:3]}
-        s.attrs.update({
-            "daybook.retrieval.ids": [h.ref_id for h in res.hits[:3]],
-            "daybook.retrieval.scores": [round(h.score, 4) for h in res.hits[:3]],
-            "daybook.retrieval.best_cosine": round(res.best_cosine, 3),
-            "daybook.retrieval.keyword_hits": res.keyword_hits,
-            "daybook.retrieval.window": window,
-        })
+        s.attrs.update(
+            {
+                "daybook.retrieval.ids": [h.ref_id for h in res.hits[:3]],
+                "daybook.retrieval.scores": [round(h.score, 4) for h in res.hits[:3]],
+                "daybook.retrieval.best_cosine": round(res.best_cosine, 3),
+                "daybook.retrieval.keyword_hits": res.keyword_hits,
+                "daybook.retrieval.window": window,
+            }
+        )
     if not res.hits or (res.best_cosine < abstain_cosine and res.keyword_hits == 0):
         return ContextResult(status="none", why="nothing above the threshold")
     cands = [
         ContextCandidate(
-            item_id=h.ref_id, date=items[h.ref_id]["occurred_on"], title=items[h.ref_id]["title"],
+            item_id=h.ref_id,
+            date=items[h.ref_id]["occurred_on"],
+            title=items[h.ref_id]["title"],
             field_values={
-                "what": items[h.ref_id]["what"], "result": items[h.ref_id]["result"],
-                "metrics": [m["display"] + " — " + m["source_text"]
-                            for m in items[h.ref_id]["metrics"]],
+                "what": items[h.ref_id]["what"],
+                "result": items[h.ref_id]["result"],
+                "metrics": [
+                    m["display"] + " — " + m["source_text"] for m in items[h.ref_id]["metrics"]
+                ],
                 "fact": record_fact(items[h.ref_id]),
             },
             score=round(h.score, 4),
         )
-        for h in res.hits[:3] if items.get(h.ref_id)
+        for h in res.hits[:3]
+        if items.get(h.ref_id)
     ]
     if not verify:
         return _heuristic(cands)
@@ -97,24 +104,41 @@ async def find(
         candidates=json.dumps([c.model_dump() for c in cands], ensure_ascii=False),
     )
     verdict, _ = await structured(
-        deps, trace, "context.verify", deps.settings.model_context, system, version,
-        [user_text(hint)], ContextVerdict,
+        deps,
+        trace,
+        "context.verify",
+        deps.settings.model_context,
+        system,
+        version,
+        [user_text(hint)],
+        ContextVerdict,
     )
     if verdict is None:
         return _heuristic(cands)
     ids = {c.item_id for c in cands}
     if verdict.status == "found" and verdict.chosen_item_id not in ids:
         return _heuristic(cands)
-    keep = cands if verdict.status != "found" else [c for c in cands if c.item_id == verdict.chosen_item_id]
-    return ContextResult(status=verdict.status, candidates=keep,
-                         chosen_item_id=verdict.chosen_item_id if verdict.status == "found" else None,
-                         why=verdict.why)
+    keep = (
+        cands
+        if verdict.status != "found"
+        else [c for c in cands if c.item_id == verdict.chosen_item_id]
+    )
+    return ContextResult(
+        status=verdict.status,
+        candidates=keep,
+        chosen_item_id=verdict.chosen_item_id if verdict.status == "found" else None,
+        why=verdict.why,
+    )
 
 
 def _heuristic(cands: list[ContextCandidate]) -> ContextResult:
     if not cands:
         return ContextResult(status="none")
     if len(cands) == 1 or cands[0].score >= cands[1].score * 1.15:
-        return ContextResult(status="found", candidates=cands[:1],
-                             chosen_item_id=cands[0].item_id, why="clear top score")
+        return ContextResult(
+            status="found",
+            candidates=cands[:1],
+            chosen_item_id=cands[0].item_id,
+            why="clear top score",
+        )
     return ContextResult(status="ambiguous", candidates=cands[:2], why="close scores")

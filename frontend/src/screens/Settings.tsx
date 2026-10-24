@@ -170,21 +170,21 @@ export function SettingsScreen() {
 
       {isOwner && <PushSection />}
 
-      <Section title="Export">
-        <div className="stack-sm">
-          {isOwner && (
+      {isOwner && (
+        <Section title="Export">
+          <div className="stack-sm">
             <a className="btn btn-ghost justify-start" href={exportUrls.resumeAsCode()} download>
               <Download size={16} aria-hidden="true" /> Resume-as-code (JSON)
             </a>
-          )}
-          <a className="btn btn-ghost justify-start" href={exportUrls.markdown} download>
-            <Download size={16} aria-hidden="true" /> Markdown
-          </a>
-          <a className="btn btn-ghost justify-start" href={exportUrls.sqlite} download>
-            <Download size={16} aria-hidden="true" /> SQLite file
-          </a>
-        </div>
-      </Section>
+            <a className="btn btn-ghost justify-start" href={exportUrls.markdown} download>
+              <Download size={16} aria-hidden="true" /> Markdown
+            </a>
+            <a className="btn btn-ghost justify-start" href={exportUrls.sqlite} download>
+              <Download size={16} aria-hidden="true" /> SQLite file
+            </a>
+          </div>
+        </Section>
+      )}
 
       <Section title="Account">
         {isOwner ? (

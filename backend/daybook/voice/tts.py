@@ -81,7 +81,9 @@ def make_tts(settings: Settings) -> TTS | None:
         return None
     if settings.daybook_tts == "elevenlabs":
         if not (settings.elevenlabs_api_key and settings.eleven_voice_id):
-            raise RuntimeError("DAYBOOK_TTS=elevenlabs needs ELEVENLABS_API_KEY and ELEVEN_VOICE_ID")
+            raise RuntimeError(
+                "DAYBOOK_TTS=elevenlabs needs ELEVENLABS_API_KEY and ELEVEN_VOICE_ID"
+            )
         return ElevenLabsTTS(settings)
     if settings.daybook_tts == "gemini":
         if not settings.tts_key:

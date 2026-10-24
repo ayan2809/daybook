@@ -16,7 +16,10 @@ OPENER_CUE = "(Daybook was just opened; the user tapped Start and is listening.)
 
 def system_for(note: str) -> tuple[str, str]:
     persona, version = load("chat")
-    return f"{persona}\n\n=== OPERATOR NOTE (from the planner, for this reply only) ===\n{note}", version
+    return (
+        f"{persona}\n\n=== OPERATOR NOTE (from the planner, for this reply only) ===\n{note}",
+        version,
+    )
 
 
 async def reply(

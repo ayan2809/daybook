@@ -34,10 +34,14 @@ class FakeLLM:
         self.dim = dim
         self.calls: list[dict[str, Any]] = []
 
-    async def generate(self, model, system, contents, response_schema=None, thinking_level=None,
-                       temperature=None):
-        self.calls.append(dict(model=model, system=system, contents=list(contents),
-                               response_schema=response_schema))
+    async def generate(
+        self, model, system, contents, response_schema=None, thinking_level=None, temperature=None
+    ):
+        self.calls.append(
+            dict(
+                model=model, system=system, contents=list(contents), response_schema=response_schema
+            )
+        )
         item = self.script.pop(0) if self.script else self.default
         if item is None:
             raise RuntimeError("FakeLLM script exhausted")
@@ -61,43 +65,68 @@ class FakeLLM:
 
 # ------------------------------------------------------------------ heuristics
 
-_YES = re.compile(r"^\s*(yes|yeah|yep|yup|correct|right|exactly|sure|ok(ay)?|haan|ha|that one|"
-                  r"that's (it|right|the one))\b", re.I)
+_YES = re.compile(
+    r"^\s*(yes|yeah|yep|yup|correct|right|exactly|sure|ok(ay)?|haan|ha|that one|"
+    r"that's (it|right|the one))\b",
+    re.I,
+)
 _NO = re.compile(r"^\s*(no|nope|nah|not that|wrong|nahi|don't)\b", re.I)
-_DEFER = re.compile(r"\b(not sure|don't know|dont know|no idea|check (tomorrow|later)|"
-                    r"i'?ll check|will check|need to check|pata nahi)\b", re.I)
-_NQ = re.compile(r"\b(no number|not (really )?a number|can'?t (really )?measure|"
-                 r"people thing|not quantifiable|nothing to measure)\b", re.I)
+_DEFER = re.compile(
+    r"\b(not sure|don't know|dont know|no idea|check (tomorrow|later)|"
+    r"i'?ll check|will check|need to check|pata nahi)\b",
+    re.I,
+)
+_NQ = re.compile(
+    r"\b(no number|not (really )?a number|can'?t (really )?measure|"
+    r"people thing|not quantifiable|nothing to measure)\b",
+    re.I,
+)
 _EDIT = re.compile(r"\b(actually|change|correct(ion)?|fix|update|it was \S+ not|not \d+)\b", re.I)
 _RECALL = re.compile(r"^(what|when|did i|remind me what|how many)\b.*\?|\bwhat did i\b", re.I)
-_SUPPORT = re.compile(r"\b(feeling low|feel(ing)? down|rough day|remind me (of )?something good|"
-                      r"need (some )?encouragement)\b", re.I)
-_VENT = re.compile(r"\b(exhausting|frustrat|annoying|tired of|so (many|much) meetings|drained)\b",
-                   re.I)
-_WRAP = re.compile(r"\b(let'?s wrap( it)? up|wrap up|i'?m done|that'?s all|that'?s it|nothing else)\b",
-                   re.I)
+_SUPPORT = re.compile(
+    r"\b(feeling low|feel(ing)? down|rough day|remind me (of )?something good|"
+    r"need (some )?encouragement)\b",
+    re.I,
+)
+_VENT = re.compile(
+    r"\b(exhausting|frustrat|annoying|tired of|so (many|much) meetings|drained)\b", re.I
+)
+_WRAP = re.compile(
+    r"\b(let'?s wrap( it)? up|wrap up|i'?m done|that'?s all|that'?s it|nothing else)\b", re.I
+)
 _STOP = re.compile(r"^\s*(stop|end now|end the session)\b", re.I)
 _REPEAT = re.compile(r"\b(say that again|repeat that|come again)\b", re.I)
 _TIME = re.compile(r"\bhow much time\b|\btime left\b", re.I)
 _SKIP = re.compile(r"^\s*(skip|next( question)?)\b", re.I)
-_INJECT = re.compile(r"\bignore (your|all|previous) instructions\b|\bsystem prompt\b|"
-                     r"\byou are now\b", re.I)
+_INJECT = re.compile(
+    r"\bignore (your|all|previous) instructions\b|\bsystem prompt\b|"
+    r"\byou are now\b",
+    re.I,
+)
 _OFF = re.compile(r"\b(tell me a joke|write (me )?(a |some )?code|weather|write my resume)\b", re.I)
-_SOFT = re.compile(r"\b(mentor\w*|help(ed|ing) (the |an |a )?(new )?(intern|junior|teammate|"
-                   r"engineer)\w*|onboard\w*|paired with|coach\w*|unblock\w*)\b", re.I)
+_SOFT = re.compile(
+    r"\b(mentor\w*|help(ed|ing) (the |an |a )?(new )?(intern|junior|teammate|"
+    r"engineer)\w*|onboard\w*|paired with|coach\w*|unblock\w*)\b",
+    re.I,
+)
 _SENT = re.compile(r"(?<=[.!?])\s+|\s+(?:also|and then)\s+", re.I)
-_WORK = re.compile(r"\b(shipped|finished|fixed|built|launched|migrated|deployed|wrote|reviewed|"
-                   r"debugged|worked on|started|merged|refactored|designed|helped|helping|mentored|"
-                   r"mentoring|spent|set up|cut|reduced|improved|learned|presented|did|"
-                   r"finally|closed|resolved)\b", re.I)
+_WORK = re.compile(
+    r"\b(shipped|finished|fixed|built|launched|migrated|deployed|wrote|reviewed|"
+    r"debugged|worked on|started|merged|refactored|designed|helped|helping|mentored|"
+    r"mentoring|spent|set up|cut|reduced|improved|learned|presented|did|"
+    r"finally|closed|resolved)\b",
+    re.I,
+)
 _NUMTXT = re.compile(r"[^.,;]*\d[^.;]*", re.I)
 
 
 def _label(text: str, system: str) -> S.TurnLabel:
     awaiting = "Waiting for a yes/no on: nothing" not in system
     pending = "Open pending question (if any): none" not in system
-    nums = [S.NumberRef(text=m.group(0), value=float(m.group(1).replace(",", "")))
-            for m in re.finditer(r"(\d[\d,]*(?:\.\d+)?)\s*(?:%|ms|x|k)?", text)]
+    nums = [
+        S.NumberRef(text=m.group(0), value=float(m.group(1).replace(",", "")))
+        for m in re.finditer(r"(\d[\d,]*(?:\.\d+)?)\s*(?:%|ms|x|k)?", text)
+    ]
     kw: dict[str, Any] = {"entities": S.Entities(numbers=nums), "confidence": 0.7}
     if _INJECT.search(text):
         return S.TurnLabel(primary_intent="off_topic", injection_suspected=True, **kw)
@@ -148,14 +177,26 @@ def _board_from_system(system: str) -> dict:
 
 def _metrics(sentence: str) -> list[S.MetricRaw]:
     out = []
-    m = re.search(r"from (?:about |around )?([\d,.]+k?)\s*(\w*)\s.*?to (?:about |under |around )?"
-                  r"([\d,.]+k?)", sentence, re.I)
+    m = re.search(
+        r"from (?:about |around )?([\d,.]+k?)\s*(\w*)\s.*?to (?:about |under |around )?"
+        r"([\d,.]+k?)",
+        sentence,
+        re.I,
+    )
     if m:
+
         def val(s):
             s = s.replace(",", "")
             return float(s[:-1]) * 1000 if s.endswith("k") else float(s)
-        out.append(S.MetricRaw(text=m.group(0).strip(), baseline=val(m.group(1)),
-                               final=val(m.group(3)), unit=m.group(2) or None))
+
+        out.append(
+            S.MetricRaw(
+                text=m.group(0).strip(),
+                baseline=val(m.group(1)),
+                final=val(m.group(3)),
+                unit=m.group(2) or None,
+            )
+        )
         return out
     m = re.search(r"(\d+(?:\.\d+)?)\s*%", sentence)
     if m:
@@ -190,30 +231,63 @@ def _draft(contents, system: str) -> S.DraftDelta:
                 continue
             n += 1
             soft = bool(_SOFT.search(sent))
-            kind = "soft_skill" if soft else "learning" if re.search(r"\blearn", sent, re.I) \
-                else "plan" if re.search(r"\b(tomorrow|next)\b", sent, re.I) else "achievement"
-            title = re.sub(r"^(i |we |also |today i |finally )+", "", sent.rstrip(".!"),
-                           flags=re.I)[:80]
-            items.append(S.DraftItem(
-                temp_id=f"t{n}", kind=kind, title=title[:1].upper() + title[1:], what=sent,
-                ownership="team" if re.match(r"\s*we\b", sent, re.I) else "did",
-                quantifiable="no" if soft or kind == "plan" else "yes" if numbers_in(sent) else "maybe",
-                metrics_raw=[] if soft else _metrics(sent), source_quote=sent.rstrip(".!"),
-            ))
+            kind = (
+                "soft_skill"
+                if soft
+                else "learning"
+                if re.search(r"\blearn", sent, re.I)
+                else "plan"
+                if re.search(r"\b(tomorrow|next)\b", sent, re.I)
+                else "achievement"
+            )
+            title = re.sub(
+                r"^(i |we |also |today i |finally )+", "", sent.rstrip(".!"), flags=re.I
+            )[:80]
+            items.append(
+                S.DraftItem(
+                    temp_id=f"t{n}",
+                    kind=kind,
+                    title=title[:1].upper() + title[1:],
+                    what=sent,
+                    ownership="team" if re.match(r"\s*we\b", sent, re.I) else "did",
+                    quantifiable="no"
+                    if soft or kind == "plan"
+                    else "yes"
+                    if numbers_in(sent)
+                    else "maybe",
+                    metrics_raw=[] if soft else _metrics(sent),
+                    source_quote=sent.rstrip(".!"),
+                )
+            )
     gaps = []
     all_items = {**board, **{i.temp_id: i.model_dump() for i in items}}
     for tid, it in all_items.items():
         if it["kind"] in ("plan", "praise", "learning"):
             continue
         if it["kind"] == "soft_skill":
-            gaps.append(S.Gap(temp_id=tid, gap="outcome", priority=2,
-                              ask_hint="What changed for them after that?"))
+            gaps.append(
+                S.Gap(
+                    temp_id=tid,
+                    gap="outcome",
+                    priority=2,
+                    ask_hint="What changed for them after that?",
+                )
+            )
         elif not it.get("metrics_raw"):
-            gaps.append(S.Gap(temp_id=tid, gap="metric", priority=1,
-                              ask_hint="Do you have a rough before and after number for that?"))
-    return S.DraftDelta(items=items, gaps=gaps,
-                        suggested_move="ask_gap" if gaps else "ask_open",
-                        suggested_target=gaps[0].temp_id if gaps else None)
+            gaps.append(
+                S.Gap(
+                    temp_id=tid,
+                    gap="metric",
+                    priority=1,
+                    ask_hint="Do you have a rough before and after number for that?",
+                )
+            )
+    return S.DraftDelta(
+        items=items,
+        gaps=gaps,
+        suggested_move="ask_gap" if gaps else "ask_open",
+        suggested_target=gaps[0].temp_id if gaps else None,
+    )
 
 
 def _pending_answer(text: str) -> S.PendingAnswer:
@@ -224,17 +298,32 @@ def _pending_answer(text: str) -> S.PendingAnswer:
     ms = _metrics(text)
     if ms:
         m = ms[0]
-        rb = (f"So it went from {_fmt(m.baseline)} to {_fmt(m.final)}?" if m.baseline is not None
-              else f"So that's {m.text}?")
-        return S.PendingAnswer(kind="metric", metric=m, metric_name="result", category="other",
-                               better_when="lower" if m.final is not None and m.baseline is not None
-                               and m.final < m.baseline else "higher", readback=rb)
+        rb = (
+            f"So it went from {_fmt(m.baseline)} to {_fmt(m.final)}?"
+            if m.baseline is not None
+            else f"So that's {m.text}?"
+        )
+        return S.PendingAnswer(
+            kind="metric",
+            metric=m,
+            metric_name="result",
+            category="other",
+            better_when="lower"
+            if m.final is not None and m.baseline is not None and m.final < m.baseline
+            else "higher",
+            readback=rb,
+        )
     if numbers_in(text) and re.search(r"\d", text):
         span = _NUMTXT.search(text).group(0).strip()
         v = float(re.search(r"\d[\d,]*(?:\.\d+)?", span).group(0).replace(",", ""))
-        return S.PendingAnswer(kind="metric", metric=S.MetricRaw(text=span, final=v),
-                               metric_name="result", category="other", better_when="higher",
-                               readback=f"So that's {span}?")
+        return S.PendingAnswer(
+            kind="metric",
+            metric=S.MetricRaw(text=span, final=v),
+            metric_name="result",
+            category="other",
+            better_when="higher",
+            readback=f"So that's {span}?",
+        )
     return S.PendingAnswer(kind="text", readback="Thanks, got it.")
 
 
@@ -255,22 +344,30 @@ def _edit_patch(system: str, text: str) -> S.EditPatch:
     for met in record.get("metrics", []):
         if met.get("delta_pct") is not None and (new.group(2) == "%" or not met.get("final")):
             sign = -1 if met["delta_pct"] < 0 else 1
-            changes.append(S.MetricPatch(metric_id=met["metric_id"], delta_pct=sign * nv,
-                                         source_text=new.group(0)))
+            changes.append(
+                S.MetricPatch(
+                    metric_id=met["metric_id"], delta_pct=sign * nv, source_text=new.group(0)
+                )
+            )
             if not old:
                 old_txt = f"{abs(met['delta_pct']):g}%"
             break
         if met.get("final") is not None:
-            changes.append(S.MetricPatch(metric_id=met["metric_id"], final=nv,
-                                         source_text=new.group(0)))
+            changes.append(
+                S.MetricPatch(metric_id=met["metric_id"], final=nv, source_text=new.group(0))
+            )
             break
     result = record.get("result")
     if result and old:
         result = result.replace(old.group(1), new.group(1))
     else:
         result = None
-    return S.EditPatch(result=result, metric_changes=changes, old_value_text=old_txt,
-                       new_value_text=f"{new.group(1)}{new.group(2)}")
+    return S.EditPatch(
+        result=result,
+        metric_changes=changes,
+        old_value_text=old_txt,
+        new_value_text=f"{new.group(1)}{new.group(2)}",
+    )
 
 
 def _verdict(system: str) -> S.ContextVerdict:
@@ -295,8 +392,12 @@ def _ask(system: str, question: str) -> S.AskAnswer:
     hits = [r for s, r in scored if s >= 2][:3]
     if not hits:
         return S.AskAnswer(abstain=True, closest=[r["id"] for s, r in scored if s >= 1][:2])
-    sentences = [S.AskSentence(text=f"On {r['date']}, {r['title'][:1].lower()}{r['title'][1:]}.",
-                               item_ids=[r["id"]]) for r in hits]
+    sentences = [
+        S.AskSentence(
+            text=f"On {r['date']}, {r['title'][:1].lower()}{r['title'][1:]}.", item_ids=[r["id"]]
+        )
+        for r in hits
+    ]
     return S.AskAnswer(abstain=False, sentences=sentences)
 
 
@@ -304,34 +405,67 @@ def _finalize(contents) -> S.FinalizeResult:
     payload = json.loads(_text_of(contents[-1]))
     items, pending = [], []
     for b in payload.get("draft_board", []):
-        metrics = [S.FinalMetric(name=b["title"][:60], unit=m.get("unit") or "count",
-                                 baseline=m.get("baseline"), final=m.get("final"),
-                                 delta_pct=m.get("delta_pct"),
-                                 better_when="lower" if (m.get("final") or 0) < (m.get("baseline") or 0)
-                                 else "higher",
-                                 approx=bool(re.search(r"about|under|around", m["text"], re.I)),
-                                 source_text=m["text"])
-                   for m in b.get("metrics_raw", [])]
+        metrics = [
+            S.FinalMetric(
+                name=b["title"][:60],
+                unit=m.get("unit") or "count",
+                baseline=m.get("baseline"),
+                final=m.get("final"),
+                delta_pct=m.get("delta_pct"),
+                better_when="lower"
+                if (m.get("final") or 0) < (m.get("baseline") or 0)
+                else "higher",
+                approx=bool(re.search(r"about|under|around", m["text"], re.I)),
+                source_text=m["text"],
+            )
+            for m in b.get("metrics_raw", [])
+        ]
         bullet = None
         if b["kind"] in ("achievement", "soft_skill"):
             bullet = b["title"]
             if metrics:
                 bullet += f" ({metrics[0].source_text})"
             bullet = bullet if 30 <= len(bullet) <= 220 else None
-        items.append(S.FinalItem(ref=b["temp_id"], kind=b["kind"], title=b["title"], what=b["what"],
-                                 ownership=b.get("ownership"), quantifiable=b.get("quantifiable", "maybe"),
-                                 occurred_on=payload["today"], impact=3 if metrics else 2,
-                                 scope="team", bullet=bullet, metrics=metrics,
-                                 source_quote=b["source_quote"]))
+        items.append(
+            S.FinalItem(
+                ref=b["temp_id"],
+                kind=b["kind"],
+                title=b["title"],
+                what=b["what"],
+                ownership=b.get("ownership"),
+                quantifiable=b.get("quantifiable", "maybe"),
+                occurred_on=payload["today"],
+                impact=3 if metrics else 2,
+                scope="team",
+                bullet=bullet,
+                metrics=metrics,
+                source_quote=b["source_quote"],
+            )
+        )
         if b["kind"] in ("achievement", "progress") and not metrics:
-            pending.append(S.FinalPending(item_ref=b["temp_id"], kind="metric",
-                                          question=f"Do you have a before-and-after number for "
-                                                   f"{b['title'][:1].lower()}{b['title'][1:]}?"))
+            pending.append(
+                S.FinalPending(
+                    item_ref=b["temp_id"],
+                    kind="metric",
+                    question=f"Do you have a before-and-after number for "
+                    f"{b['title'][:1].lower()}{b['title'][1:]}?",
+                )
+            )
     for t in payload.get("touched_this_session", []):
-        items.append(S.FinalItem(action="update", existing_id=t["id"], kind=t["kind"],
-                                 title=t["title"], what=t["what"], source_quote=t["what"]))
+        items.append(
+            S.FinalItem(
+                action="update",
+                existing_id=t["id"],
+                kind=t["kind"],
+                title=t["title"],
+                what=t["what"],
+                source_quote=t["what"],
+            )
+        )
     titles = [i.title[:1].lower() + i.title[1:] for i in items if i.action == "create"][:3]
-    summary = ("You talked about " + ", ".join(titles) + ".") if titles else "A short check-in today."
+    summary = (
+        ("You talked about " + ", ".join(titles) + ".") if titles else "A short check-in today."
+    )
     return S.FinalizeResult(day_summary=summary, items=items, pending_questions=pending)
 
 
@@ -342,8 +476,9 @@ class HeuristicFakeLLM:
         self.dim = dim
         self.calls: list[dict[str, Any]] = []
 
-    async def generate(self, model, system, contents, response_schema=None, thinking_level=None,
-                       temperature=None):
+    async def generate(
+        self, model, system, contents, response_schema=None, thinking_level=None, temperature=None
+    ):
         self.calls.append({"model": model, "schema": getattr(response_schema, "__name__", None)})
         users = [_text_of(c) for c in contents if c.role == "user"]
         last = users[-1] if users else ""
@@ -364,8 +499,15 @@ class HeuristicFakeLLM:
         elif response_schema is S.FinalizeResult:
             parsed = _finalize(contents)
         elif response_schema is S.JudgeScores:
-            parsed = S.JudgeScores(goal_adherence=1.0, solutionizing=0, missed_followups=0,
-                                   fidelity_issues=0, warmth=4, wrap_ok=True, notes="fake judge")
+            parsed = S.JudgeScores(
+                goal_adherence=1.0,
+                solutionizing=0,
+                missed_followups=0,
+                fidelity_issues=0,
+                warmth=4,
+                wrap_ok=True,
+                notes="fake judge",
+            )
         elif response_schema is None:
             m = re.search(r'example \(an acceptable reply; say it your own way\): "(.*)"', system)
             text = m.group(1) if m else "Got it. What else stood out today?"
@@ -373,8 +515,14 @@ class HeuristicFakeLLM:
             raise RuntimeError(f"HeuristicFakeLLM has no rule for {response_schema}")
         if parsed is not None:
             text = parsed.model_dump_json()
-        return LLMResponse(text=text, parsed=parsed, tokens_in=len(system) // 4 + 50,
-                           tokens_out=len(text) // 4 + 5, model=model)
+        return LLMResponse(
+            text=text,
+            parsed=parsed,
+            tokens_in=len(system) // 4 + 50,
+            tokens_out=len(text) // 4 + 5,
+            model=model,
+            free=True,
+        )
 
     async def embed(self, texts, task):
         return [fake_embedding(t, self.dim) for t in texts]

@@ -14,8 +14,34 @@ import numpy as np
 from daybook.llm.gemini import EmbedTask
 
 _TOKEN = re.compile(r"[a-z0-9]+")
-_STOP = {"the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "my", "i", "it",
-         "is", "was", "that", "this", "what", "did", "do", "at", "by", "from", "me", "about"}
+_STOP = {
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "of",
+    "to",
+    "in",
+    "on",
+    "for",
+    "with",
+    "my",
+    "i",
+    "it",
+    "is",
+    "was",
+    "that",
+    "this",
+    "what",
+    "did",
+    "do",
+    "at",
+    "by",
+    "from",
+    "me",
+    "about",
+}
 
 
 class Embedder(Protocol):

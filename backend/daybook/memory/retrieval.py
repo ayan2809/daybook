@@ -24,9 +24,38 @@ from daybook.memory.vault import Vault
 log = logging.getLogger(__name__)
 RRF_K = 60
 _WORD = re.compile(r"[A-Za-z0-9]{2,}")
-_FTS_STOP = {"the", "and", "for", "with", "what", "did", "was", "that", "this", "about", "my",
-             "me", "on", "in", "of", "to", "it", "is", "at", "by", "from", "when", "how", "do",
-             "last", "week", "day", "change", "actually", "not"}
+_FTS_STOP = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "what",
+    "did",
+    "was",
+    "that",
+    "this",
+    "about",
+    "my",
+    "me",
+    "on",
+    "in",
+    "of",
+    "to",
+    "it",
+    "is",
+    "at",
+    "by",
+    "from",
+    "when",
+    "how",
+    "do",
+    "last",
+    "week",
+    "day",
+    "change",
+    "actually",
+    "not",
+}
 
 
 @dataclass
@@ -103,12 +132,15 @@ def search(
     fq = _fts_query(query)
     if fq:
         try:
-            kw = [r[0] for r in conn.execute(
-                "SELECT f.rowid FROM docs_fts f JOIN docs d ON d.id = f.rowid"
-                f" WHERE docs_fts MATCH ? AND d.doc_type IN ({','.join('?' * len(doc_types))})"
-                " ORDER BY bm25(docs_fts) LIMIT 20",
-                (fq, *doc_types),
-            )]
+            kw = [
+                r[0]
+                for r in conn.execute(
+                    "SELECT f.rowid FROM docs_fts f JOIN docs d ON d.id = f.rowid"
+                    f" WHERE docs_fts MATCH ? AND d.doc_type IN ({','.join('?' * len(doc_types))})"
+                    " ORDER BY bm25(docs_fts) LIMIT 20",
+                    (fq, *doc_types),
+                )
+            ]
         except sqlite3.OperationalError as exc:
             log.info("fts query failed: %s", exc)
     scores: dict[int, float] = {}
@@ -135,7 +167,8 @@ def search(
         if m is None:
             continue
         in_window = (
-            date_window is not None and m["occurred_on"] is not None
+            date_window is not None
+            and m["occurred_on"] is not None
             and date_window[0] <= m["occurred_on"] <= date_window[1]
         )
         if date_window and hard_date and not in_window:
@@ -144,8 +177,17 @@ def search(
             s += 1 / (RRF_K + 1)  # as if ranked first in a third list
         if project_ids and m["project_id"] in project_ids:
             s += 0.5 / (RRF_K + 1)
-        hits.append(Hit(doc_id, m["doc_type"], m["ref_id"], m["occurred_on"], s,
-                        cos.get(doc_id, 0.0), kw_rank.get(doc_id)))
+        hits.append(
+            Hit(
+                doc_id,
+                m["doc_type"],
+                m["ref_id"],
+                m["occurred_on"],
+                s,
+                cos.get(doc_id, 0.0),
+                kw_rank.get(doc_id),
+            )
+        )
     hits.sort(key=lambda h: -h.score)
     return SearchResult(
         hits=hits[:k],

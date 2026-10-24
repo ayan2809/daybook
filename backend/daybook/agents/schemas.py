@@ -11,13 +11,31 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 Intent = Literal[
-    "reflect", "metric_answer", "defer", "not_quantifiable", "edit_request", "confirm", "deny",
-    "recall_request", "support_request", "vent", "meta", "off_topic", "crisis_signal",
+    "reflect",
+    "metric_answer",
+    "defer",
+    "not_quantifiable",
+    "edit_request",
+    "confirm",
+    "deny",
+    "recall_request",
+    "support_request",
+    "vent",
+    "meta",
+    "off_topic",
+    "crisis_signal",
 ]
 MetaCommand = Literal["wrap_up", "stop", "pause", "repeat", "skip", "time_left"]
 Kind = Literal[
-    "achievement", "progress", "learning", "challenge", "soft_skill", "decision", "blocker",
-    "praise", "plan",
+    "achievement",
+    "progress",
+    "learning",
+    "challenge",
+    "soft_skill",
+    "decision",
+    "blocker",
+    "praise",
+    "plan",
 ]
 Ownership = Literal["led", "did", "helped", "team"]
 Quantifiable = Literal["yes", "maybe", "no"]
@@ -26,8 +44,16 @@ Move = Literal[
     "ask_gap", "ask_open", "ask_hard_part", "ask_learning", "ask_tomorrow", "acknowledge", "none"
 ]
 MetricCategory = Literal[
-    "latency", "throughput", "cost", "revenue", "reliability", "time", "scale", "quality",
-    "adoption", "other",
+    "latency",
+    "throughput",
+    "cost",
+    "revenue",
+    "reliability",
+    "time",
+    "scale",
+    "quality",
+    "adoption",
+    "other",
 ]
 Scope = Literal["individual", "team", "org", "company", "customers", "public"]
 Period = Literal["one-time", "per-day", "per-week", "per-month", "per-year"]

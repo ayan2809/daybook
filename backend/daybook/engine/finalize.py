@@ -15,13 +15,13 @@ import statistics
 from datetime import date, datetime
 
 from daybook.agents.base import structured
-from daybook.agents.schemas import FinalizeResult, FinalItem, FinalMetric, FinalPending
+from daybook.agents.schemas import FinalItem, FinalizeResult, FinalMetric, FinalPending
 from daybook.engine import state as st
 from daybook.engine.app import App, User
 from daybook.engine.state import SessionState
 from daybook.llm.gemini import user_text
 from daybook.memory import repo, retrieval
-from daybook.memory.validate import bullet_ok, numbers_unsupported, number_supported, quote_in
+from daybook.memory.validate import bullet_ok, number_supported, numbers_unsupported, quote_in
 from daybook.obs.log import log_event
 from daybook.obs.tracer import Trace
 from daybook.prompts import render
@@ -34,8 +34,13 @@ GAP_QUESTIONS = {
     "how": "How did you do {t}?",
     "why_it_mattered": "Why did {t} matter?",
 }
-PENDING_KIND = {"metric": "metric", "outcome": "outcome", "ownership": "ownership",
-                "how": "clarify", "why_it_mattered": "outcome"}
+PENDING_KIND = {
+    "metric": "metric",
+    "outcome": "outcome",
+    "ownership": "ownership",
+    "how": "clarify",
+    "why_it_mattered": "outcome",
+}
 
 
 def _lf(s: str) -> str:
@@ -93,15 +98,22 @@ async def finalize_session(app: App, user: User, sid: str, now: datetime | None 
     app.spend.add(user.role, trace.cost_usd, now)
     state.budgets["cost_usd"] = round(state.budgets["cost_usd"] + trace.cost_usd, 6)
     stats = session_stats(state)
-    vault.write(lambda conn: conn.execute(
-        "UPDATE sessions SET status = 'finalized', stats = ? WHERE id = ?",
-        (json.dumps(stats), state.id),
-    ))
+    vault.write(
+        lambda conn: conn.execute(
+            "UPDATE sessions SET status = 'finalized', stats = ? WHERE id = ?",
+            (json.dumps(stats), state.id),
+        )
+    )
     _save(app, user, state, None, force=True)
     d = trace.finish()
     app.store.put(f"traces/{user.uid}/{state.local_date}/jobs/finalize-{sid}.json", Trace.dumps(d))
-    app.dispatch("session_judge", uid=user.uid, prefix=user.prefix, sandbox_id=user.sandbox_id,
-                 session_id=sid)
+    app.dispatch(
+        "session_judge",
+        uid=user.uid,
+        prefix=user.prefix,
+        sandbox_id=user.sandbox_id,
+        session_id=sid,
+    )
     return {"status": "finalized", "items": len(written["item_ids"])}
 
 
@@ -134,24 +146,38 @@ async def _deep_pass(app: App, user: User, state: SessionState, trace: Trace) ->
     payload = {
         "today": state.local_date,
         "mode": state.mode,
-        "transcript": [{"seq": t.seq, "role": t.role, "text": t.text}
-                       for t in state.turns if not t.safety],
+        "transcript": [
+            {"seq": t.seq, "role": t.role, "text": t.text} for t in state.turns if not t.safety
+        ],
         "draft_board": board,
         "projects": [{"id": p["id"], "name": p["name"], "aliases": p["aliases"]} for p in projects],
         "similar_existing": similar,
-        "open_pending": [{"id": p["id"], "item_id": p["item_id"], "question": p["question"]}
-                         for p in open_pending],
+        "open_pending": [
+            {"id": p["id"], "item_id": p["item_id"], "question": p["question"]}
+            for p in open_pending
+        ],
         "touched_this_session": [
-            {"id": i["id"], "title": i["title"], "what": i["what"], "result": i["result"],
-             "bullet": i["bullet"], "kind": i["kind"],
-             "metrics": [f"{m['name']}: {m['display']} (said: {m['source_text']})"
-                         for m in i["metrics"]],
-             "resolution": next((r["resolution"] for r in state.resolved_pending
-                                 if r["item_id"] == i["id"]), "edited")}
+            {
+                "id": i["id"],
+                "title": i["title"],
+                "what": i["what"],
+                "result": i["result"],
+                "bullet": i["bullet"],
+                "kind": i["kind"],
+                "metrics": [
+                    f"{m['name']}: {m['display']} (said: {m['source_text']})" for m in i["metrics"]
+                ],
+                "resolution": next(
+                    (r["resolution"] for r in state.resolved_pending if r["item_id"] == i["id"]),
+                    "edited",
+                ),
+            }
             for i in touched
         ],
-        "promised_questions": [{"ref": p["temp_id"], "about": p["about"],
-                                "ask_hint": p.get("ask_hint")} for p in state.promised_questions],
+        "promised_questions": [
+            {"ref": p["temp_id"], "about": p["about"], "ask_hint": p.get("ask_hint")}
+            for p in state.promised_questions
+        ],
         "note": "Use the draft_board temp_id (t1, t2...) as the item's ref when it comes from the board.",
     }
     system, version = render(
@@ -159,8 +185,15 @@ async def _deep_pass(app: App, user: User, state: SessionState, trace: Trace) ->
         names_rule=", unless the user's keep-names setting is on (it is)" if keep_names else "",
     )
     result, _ = await structured(
-        app.deps, trace, "analyzer.deep", app.settings.model_deep, system, version,
-        [user_text(json.dumps(payload, ensure_ascii=False))], FinalizeResult, thinking="low",
+        app.deps,
+        trace,
+        "analyzer.deep",
+        app.settings.model_deep,
+        system,
+        version,
+        [user_text(json.dumps(payload, ensure_ascii=False))],
+        FinalizeResult,
+        thinking="low",
     )
     if result is not None:
         state.prompt_versions["analyzer_deep"] = version
@@ -191,9 +224,17 @@ async def _similar(app: App, user: User, state: SessionState, board: list[dict])
                 it = repo.get_item(conn, h.ref_id)
                 if it and it["status"] not in ("hidden", "merged"):
                     seen.add(h.ref_id)
-                    out.append({"id": it["id"], "date": it["occurred_on"], "kind": it["kind"],
-                                "title": it["title"], "what": it["what"], "result": it["result"],
-                                "project": it["project"]["name"] if it["project"] else None})
+                    out.append(
+                        {
+                            "id": it["id"],
+                            "date": it["occurred_on"],
+                            "kind": it["kind"],
+                            "title": it["title"],
+                            "what": it["what"],
+                            "result": it["result"],
+                            "project": it["project"]["name"] if it["project"] else None,
+                        }
+                    )
     return out
 
 
@@ -202,27 +243,53 @@ def fallback_result(state: SessionState) -> FinalizeResult:
     items, pending = [], []
     for tid, b in state.board_items.items():
         metrics = [
-            FinalMetric(name=b["title"][:80], unit=m.get("unit") or "count",
-                        baseline=m.get("baseline"), final=m.get("final"),
-                        delta_pct=m.get("delta_pct"), source_text=m["text"])
+            FinalMetric(
+                name=b["title"][:80],
+                unit=m.get("unit") or "count",
+                baseline=m.get("baseline"),
+                final=m.get("final"),
+                delta_pct=m.get("delta_pct"),
+                source_text=m["text"],
+            )
             for m in b.get("metrics_raw", [])
         ]
-        items.append(FinalItem(
-            ref=tid, kind=b["kind"], title=b["title"], what=b["what"], how=b.get("how"),
-            result=b.get("result"), ownership=b.get("ownership"), quantifiable=b.get("quantifiable", "maybe"),
-            project=None, occurred_on=state.local_date, metrics=metrics,
-            source_quote=b["source_quote"],
-        ))
+        items.append(
+            FinalItem(
+                ref=tid,
+                kind=b["kind"],
+                title=b["title"],
+                what=b["what"],
+                how=b.get("how"),
+                result=b.get("result"),
+                ownership=b.get("ownership"),
+                quantifiable=b.get("quantifiable", "maybe"),
+                project=None,
+                occurred_on=state.local_date,
+                metrics=metrics,
+                source_quote=b["source_quote"],
+            )
+        )
     for g in state.gaps:
         if g.get("priority", 2) <= 2 and g["temp_id"] in state.board_items:
             t = _lf(state.board_items[g["temp_id"]]["title"])
-            pending.append(FinalPending(item_ref=g["temp_id"], kind=PENDING_KIND[g["gap"]],
-                                        question=GAP_QUESTIONS[g["gap"]].format(t=t)))
+            pending.append(
+                FinalPending(
+                    item_ref=g["temp_id"],
+                    kind=PENDING_KIND[g["gap"]],
+                    question=GAP_QUESTIONS[g["gap"]].format(t=t),
+                )
+            )
     titles = [_lf(b["title"]) for b in state.board_items.values()][:4]
-    summary = ("You talked about " + ", ".join(titles) + ".") if titles else \
-        "A short reflection today."
-    return FinalizeResult(day_summary=summary, energy=state.energy, mood_word=state.mood_word,
-                          items=items, pending_questions=pending)
+    summary = (
+        ("You talked about " + ", ".join(titles) + ".") if titles else "A short reflection today."
+    )
+    return FinalizeResult(
+        day_summary=summary,
+        energy=state.energy,
+        mood_word=state.mood_word,
+        items=items,
+        pending_questions=pending,
+    )
 
 
 # ------------------------------------------------------------------ validation (code)
@@ -240,6 +307,8 @@ def _validate(state: SessionState, result: FinalizeResult) -> dict:
         if not quote_ok and not existing:
             notes.append("The source quote wasn't found in your words.")
         metrics = []
+        if it.kind == "soft_skill":
+            it = it.model_copy(update={"metrics": []})  # plan B2: soft skills carry no metrics
         for m in it.metrics:
             ok = quote_in(m.source_text, users) and all(
                 number_supported(getattr(m, f), users) for f in ("baseline", "final", "delta_pct")
@@ -260,70 +329,124 @@ def _validate(state: SessionState, result: FinalizeResult) -> dict:
             occurred_on = min(occurred.isoformat(), today)
         except ValueError:
             occurred_on = today
-        items.append({
-            "ref": it.ref or f"i{len(items) + 1}", "action": it.action, "existing_id": existing,
-            "fields": {
-                "kind": it.kind, "title": it.title[:200], "what": it.what, "how": it.how,
-                "result": it.result, "bullet": bullet, "scope": it.scope,
-                "impact": max(1, min(5, it.impact)) if it.impact else None,
-                "quantifiable": it.quantifiable, "ownership": it.ownership,
-                "occurred_on": occurred_on, "source_quote": it.source_quote if quote_ok else (
-                    it.source_quote or (users[0][:200] if users else "")),
-                "source_turn_seqs": it.source_turn_seqs,
-            },
-            "project": it.project.model_dump() if it.project else None,
-            "metrics": metrics, "skills": it.skills[:8], "notes": notes,
-        })
-    return {"items": items, "pending": [p.model_dump() for p in result.pending_questions],
-            "resolved": [r.model_dump() for r in result.resolved_pending],
-            "links": [link.model_dump() for link in result.links],
-            "day_summary": result.day_summary, "energy": result.energy,
-            "mood_word": result.mood_word}
+        items.append(
+            {
+                "ref": it.ref or f"i{len(items) + 1}",
+                "action": it.action,
+                "existing_id": existing,
+                "fields": {
+                    "kind": it.kind,
+                    "title": it.title[:200],
+                    "what": it.what,
+                    "how": it.how,
+                    "result": it.result,
+                    "bullet": bullet,
+                    "scope": it.scope,
+                    "impact": max(1, min(5, it.impact)) if it.impact else None,
+                    "quantifiable": it.quantifiable,
+                    "ownership": it.ownership,
+                    "occurred_on": occurred_on,
+                    "source_quote": it.source_quote
+                    if quote_ok
+                    else (it.source_quote or (users[0][:200] if users else "")),
+                    "source_turn_seqs": it.source_turn_seqs,
+                },
+                "project": it.project.model_dump() if it.project else None,
+                "metrics": metrics,
+                "skills": it.skills[:8],
+                "notes": notes,
+            }
+        )
+    return {
+        "items": items,
+        "pending": [p.model_dump() for p in result.pending_questions],
+        "resolved": [r.model_dump() for r in result.resolved_pending],
+        "links": [link.model_dump() for link in result.links],
+        "day_summary": result.day_summary,
+        "energy": result.energy,
+        "mood_word": result.mood_word,
+    }
 
 
 def _write(conn, state: SessionState, plan: dict) -> dict:
     """The vault write. Re-runnable (it may run again after a 412)."""
     sid = state.id
     turns = [t for t in state.turns if not t.safety]
-    repo.upsert_session(conn, {
-        "id": sid, "mode": state.mode if state.mode != "quick" else "quick",
-        "local_date": state.local_date, "started_at": state.started_at,
-        "ended_at": state.ended_at, "status": "finalizing", "end_reason": state.end_reason,
-        "turn_count": len([t for t in turns if t.role == "user"]),
-        "energy": plan["energy"] or state.energy, "mood_word": plan["mood_word"] or state.mood_word,
-        "prompt_versions": state.prompt_versions,
-    })
+    repo.upsert_session(
+        conn,
+        {
+            "id": sid,
+            "mode": state.mode if state.mode != "quick" else "quick",
+            "local_date": state.local_date,
+            "started_at": state.started_at,
+            "ended_at": state.ended_at,
+            "status": "finalizing",
+            "end_reason": state.end_reason,
+            "turn_count": len([t for t in turns if t.role == "user"]),
+            "energy": plan["energy"] or state.energy,
+            "mood_word": plan["mood_word"] or state.mood_word,
+            "prompt_versions": state.prompt_versions,
+        },
+    )
     repo.insert_turns(conn, sid, [t.model_dump() for t in turns])
     ref_to_id: dict[str, int] = {}
     item_ids: list[int] = []
     for it in plan["items"]:
         f = dict(it["fields"])
         p = it["project"]
-        if p and p.get("existing_id") and conn.execute(
-            "SELECT 1 FROM projects WHERE id = ?", (p["existing_id"],)
-        ).fetchone():
+        if (
+            p
+            and p.get("existing_id")
+            and conn.execute("SELECT 1 FROM projects WHERE id = ?", (p["existing_id"],)).fetchone()
+        ):
             f["project_id"] = p["existing_id"]
         elif p and p.get("new_name"):
             f["project_id"] = repo.project_id_for(conn, p["new_name"])
         existing = it["existing_id"]
-        if existing and conn.execute(
-            "SELECT 1 FROM memory_items WHERE id = ? AND status != 'merged'", (existing,)
-        ).fetchone():
+        if (
+            existing
+            and conn.execute(
+                "SELECT 1 FROM memory_items WHERE id = ? AND status != 'merged'", (existing,)
+            ).fetchone()
+        ):
             cur = repo.get_item(conn, existing)
             have = {m["source_text"] for m in cur["metrics"]}
-            changes = {k: f[k] for k in ("title", "what", "how", "result", "scope", "impact",
-                                          "ownership", "quantifiable") if f.get(k)}
+            changes = {
+                k: f[k]
+                for k in (
+                    "title",
+                    "what",
+                    "how",
+                    "result",
+                    "scope",
+                    "impact",
+                    "ownership",
+                    "quantifiable",
+                )
+                if f.get(k)
+            }
             if f.get("bullet"):
-                pool = [*state.user_texts(), *(m["source_text"] for m in cur["metrics"]),
-                        *(m["source_text"] for m in it["metrics"])]
+                pool = [
+                    *state.user_texts(),
+                    *(m["source_text"] for m in cur["metrics"]),
+                    *(m["source_text"] for m in it["metrics"]),
+                ]
                 if not numbers_unsupported(f["bullet"], pool):
                     changes["bullet"] = f["bullet"]
-            if cur["status"] == "draft" and not cur["validation_note"] and not any(
-                q["kind"] in ("metric", "outcome") for q in cur["open_pending"]
+            if (
+                cur["status"] == "draft"
+                and not cur["validation_note"]
+                and not any(q["kind"] in ("metric", "outcome") for q in cur["open_pending"])
             ):
                 changes["status"] = "active"
-            repo.update_item(conn, existing, changes, "analyzer", f"session {sid}",
-                             add_metrics=[m for m in it["metrics"] if m["source_text"] not in have])
+            repo.update_item(
+                conn,
+                existing,
+                changes,
+                "analyzer",
+                f"session {sid}",
+                add_metrics=[m for m in it["metrics"] if m["source_text"] not in have],
+            )
             ref_to_id[it["ref"]] = existing
             item_ids.append(existing)
             continue
@@ -331,8 +454,9 @@ def _write(conn, state: SessionState, plan: dict) -> dict:
         f["status"] = "draft" if it["notes"] else "active"
         if f.get("bullet") and not bullet_ok(f["bullet"]):
             f["bullet"] = None
-        iid = repo.create_item(conn, f, it["metrics"], it["skills"], session_id=sid,
-                               reason=f"session {sid}")
+        iid = repo.create_item(
+            conn, f, it["metrics"], it["skills"], session_id=sid, reason=f"session {sid}"
+        )
         ref_to_id[it["ref"]] = iid
         item_ids.append(iid)
     # pending questions: the deep pass's, plus every promised one it missed
@@ -345,8 +469,11 @@ def _write(conn, state: SessionState, plan: dict) -> dict:
                 i = int(ref[3:])
             except ValueError:
                 return None
-            return i if conn.execute("SELECT 1 FROM memory_items WHERE id = ?", (i,)).fetchone() \
+            return (
+                i
+                if conn.execute("SELECT 1 FROM memory_items WHERE id = ?", (i,)).fetchone()
                 else None
+            )
         return ref_to_id.get(ref)
 
     for p in plan["pending"]:
@@ -359,8 +486,11 @@ def _write(conn, state: SessionState, plan: dict) -> dict:
         ref = pq["temp_id"]
         if ref in covered or ref not in ref_to_id:
             continue
-        q = pq.get("ask_hint") if (pq.get("ask_hint") or "").endswith("?") else \
-            GAP_QUESTIONS[pq["gap"]].format(t=_lf(pq["title"]))
+        q = (
+            pq.get("ask_hint")
+            if (pq.get("ask_hint") or "").endswith("?")
+            else GAP_QUESTIONS[pq["gap"]].format(t=_lf(pq["title"]))
+        )
         pending_ids.append(repo.create_pending(conn, ref_to_id[ref], PENDING_KIND[pq["gap"]], q))
     # items with an open metric/outcome question stay drafts until it's answered
     for pid in pending_ids:
@@ -379,12 +509,17 @@ def _write(conn, state: SessionState, plan: dict) -> dict:
         if r["resolution"] == "deferred":
             continue
         repo.resolve_pending(conn, pid, r["resolution"], r.get("answer_text") or None)
-    repo.mark_asked(conn, [p for p in state.asked_pending
-                           if p not in state.flags.get("skipped_pending", [])])
+    repo.mark_asked(
+        conn, [p for p in state.asked_pending if p not in state.flags.get("skipped_pending", [])]
+    )
     for link in plan["links"]:
         fid = ref_to_id.get(link["from_ref"])
-        if fid and conn.execute("SELECT 1 FROM memory_items WHERE id = ?",
-                                (link["to_item_id"],)).fetchone():
+        if (
+            fid
+            and conn.execute(
+                "SELECT 1 FROM memory_items WHERE id = ?", (link["to_item_id"],)
+            ).fetchone()
+        ):
             repo.add_link(conn, fid, link["to_item_id"], link["kind"])
     # the day digest (several sessions in a day are joined)
     prev = conn.execute(
@@ -398,7 +533,10 @@ def _write(conn, state: SessionState, plan: dict) -> dict:
             text = f"{prev['text']} {text}"
         ids = list(dict.fromkeys(json.loads(prev["item_ids"]) + item_ids))
     repo.upsert_digest(conn, "day", state.local_date, state.local_date, text, ids)
-    return {"item_ids": list(dict.fromkeys(item_ids)), "pending_ids": list(dict.fromkeys(pending_ids))}
+    return {
+        "item_ids": list(dict.fromkeys(item_ids)),
+        "pending_ids": list(dict.fromkeys(pending_ids)),
+    }
 
 
 def session_stats(state: SessionState) -> dict:
@@ -408,8 +546,11 @@ def session_stats(state: SessionState) -> dict:
     dictated = sum(t.dictated_chars or 0 for t in user_turns)
     duration = 0
     if state.ended_at:
-        duration = int((datetime.fromisoformat(state.ended_at)
-                        - datetime.fromisoformat(state.started_at)).total_seconds())
+        duration = int(
+            (
+                datetime.fromisoformat(state.ended_at) - datetime.fromisoformat(state.started_at)
+            ).total_seconds()
+        )
     return {
         "cost_usd": round(state.budgets.get("cost_usd", 0), 6),
         "tokens_in": state.budgets.get("tokens_in", 0),

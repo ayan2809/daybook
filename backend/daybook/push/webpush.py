@@ -22,15 +22,19 @@ class Sender(Protocol):
 class VapidSender:
     def __init__(self, private_key: str, site_url: str):
         self.private_key = private_key
-        self.sub = site_url if site_url.startswith(("mailto:", "https://")) else "https://example.invalid"
+        self.sub = (
+            site_url if site_url.startswith(("mailto:", "https://")) else "https://example.invalid"
+        )
 
     def send(self, sub: dict, payload: dict) -> SendResult:
         from pywebpush import WebPushException, webpush
 
         try:
             r = webpush(
-                subscription_info={"endpoint": sub["endpoint"],
-                                   "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]}},
+                subscription_info={
+                    "endpoint": sub["endpoint"],
+                    "keys": {"p256dh": sub["p256dh"], "auth": sub["auth"]},
+                },
                 data=json.dumps(payload),
                 vapid_private_key=self.private_key,
                 vapid_claims={"sub": self.sub},

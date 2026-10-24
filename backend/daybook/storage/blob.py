@@ -146,7 +146,11 @@ class S3BlobStore:
         try:
             r = self.s3.put_object(**kwargs)
         except ClientError as exc:
-            if exc.response["Error"]["Code"] in ("PreconditionFailed", "412", "ConditionalRequestConflict"):
+            if exc.response["Error"]["Code"] in (
+                "PreconditionFailed",
+                "412",
+                "ConditionalRequestConflict",
+            ):
                 raise PreconditionFailed(key) from exc
             raise
         return r["ETag"].strip('"')
@@ -179,8 +183,10 @@ def get_blob_store() -> BlobStore:
         from daybook.settings import get_settings
 
         s = get_settings()
-        _store = S3BlobStore(s.daybook_bucket) if s.daybook_blob == "s3" else LocalBlobStore(
-            s.daybook_data_dir / "blobs"
+        _store = (
+            S3BlobStore(s.daybook_bucket)
+            if s.daybook_blob == "s3"
+            else LocalBlobStore(s.daybook_data_dir / "blobs")
         )
     return _store
 

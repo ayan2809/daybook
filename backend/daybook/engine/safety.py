@@ -26,16 +26,32 @@ DISPLAY_MESSAGE = (
 )
 
 _PATTERNS = [
-    r"\bkill (my ?self|myself)\b", r"\bend (it all|my life)\b", r"\bsuicid", r"\bself[- ]?harm",
-    r"\bhurt(ing)? myself\b", r"\bwant to die\b", r"\bwanna die\b", r"\bbetter off dead\b",
-    r"\bno reason to live\b", r"\bdon'?t want to (live|be alive|wake up)\b",
+    r"\bkill (my ?self|myself)\b",
+    r"\bend (it all|my life)\b",
+    r"\bsuicid",
+    r"\bself[- ]?harm",
+    r"\bhurt(ing)? myself\b",
+    r"\bwant to die\b",
+    r"\bwanna die\b",
+    r"\bbetter off dead\b",
+    r"\bno reason to live\b",
+    r"\bdon'?t want to (live|be alive|wake up)\b",
     r"\bdon'?t see the point of (anything|living|life|going on)\b",
-    r"\bcan'?t go on\b", r"\bnot worth living\b", r"\btake my (own )?life\b",
-    r"\bdisappear forever\b", r"\bnobody would (miss|care)\b",
+    r"\bcan'?t go on\b",
+    r"\bnot worth living\b",
+    r"\btake my (own )?life\b",
+    r"\bdisappear forever\b",
+    r"\bnobody would (miss|care)\b",
     # Hinglish
-    r"\bmar(na)? jaana? chahta\b", r"\bmarna chahti\b", r"\bmar jaun\b", r"\bjeene ka mann nahi\b",
-    r"\bjeena nahi chahta\b", r"\bjeena nahi chahti\b", r"\bkhud ko (khatam|hurt)\b",
-    r"\bsuicide kar\b", r"\bzindagi khatam\b",
+    r"\bmar(na)? jaana? chahta\b",
+    r"\bmarna chahti\b",
+    r"\bmar jaun\b",
+    r"\bjeene ka mann nahi\b",
+    r"\bjeena nahi chahta\b",
+    r"\bjeena nahi chahti\b",
+    r"\bkhud ko (khatam|hurt)\b",
+    r"\bsuicide kar\b",
+    r"\bzindagi khatam\b",
 ]
 _RX = re.compile("|".join(_PATTERNS), re.IGNORECASE)
 

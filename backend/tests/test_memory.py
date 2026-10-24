@@ -25,8 +25,14 @@ def conn(tmp_path):
 
 
 def _item(conn, **kw):
-    fields = dict(kind="achievement", occurred_on="2026-10-20", title="Ledger migration",
-                  what="Migrated the ledger", source_quote="migrated the ledger", status="active")
+    fields = dict(
+        kind="achievement",
+        occurred_on="2026-10-20",
+        title="Ledger migration",
+        what="Migrated the ledger",
+        source_quote="migrated the ledger",
+        status="active",
+    )
     fields.update(kw)
     return repo.create_item(conn, fields)
 
@@ -41,14 +47,17 @@ def test_schema_checks(conn):
     with pytest.raises(sqlite3.IntegrityError):
         conn.execute(
             "INSERT INTO metrics (item_id, name, category, unit, better_when, source_text)"
-            " VALUES (?, 'x', 'other', 'ms', 'lower', 'x')", (item,)
+            " VALUES (?, 'x', 'other', 'ms', 'lower', 'x')",
+            (item,),
         )
 
 
 # A2
 def test_quote_and_number_checks():
-    turns = ["I finally shipped the webhook retry worker today.",
-             "From about 1,200 failed deliveries a day to under 100."]
+    turns = [
+        "I finally shipped the webhook retry worker today.",
+        "From about 1,200 failed deliveries a day to under 100.",
+    ]
     assert quote_in("shipped the webhook retry worker", turns)
     assert quote_in("Shipped  the webhook retry worker.", turns)
     assert not quote_in("shipped the payment retry worker", turns)
@@ -66,21 +75,42 @@ def test_delta_math():
     assert (d.delta_pct, d.is_derived, d.baseline) == (-35, False, None)
     d = compute_deltas(None, 4, None, "x", "higher", "4x throughput")
     assert (d.baseline, d.final, d.delta_pct) == (1, 4, 300)
-    assert metric_display({"baseline": 120, "final": 45, "unit": "ms", "delta_pct": -62.5}) \
+    assert (
+        metric_display({"baseline": 120, "final": 45, "unit": "ms", "delta_pct": -62.5})
         == "120 → 45 ms (−62.5%)"
+    )
 
 
 def test_item_versions_and_restore(conn):
     iid = repo.create_item(
         conn,
-        dict(kind="achievement", occurred_on="2026-10-20", title="Ledger migration",
-             what="Migrated the ledger", source_quote="migrated the ledger", status="active"),
-        metrics=[{"name": "reconciliation time", "category": "time", "unit": "%",
-                  "delta_pct": -50, "better_when": "lower", "source_text": "50% faster"}],
+        dict(
+            kind="achievement",
+            occurred_on="2026-10-20",
+            title="Ledger migration",
+            what="Migrated the ledger",
+            source_quote="migrated the ledger",
+            status="active",
+        ),
+        metrics=[
+            {
+                "name": "reconciliation time",
+                "category": "time",
+                "unit": "%",
+                "delta_pct": -50,
+                "better_when": "lower",
+                "source_text": "50% faster",
+            }
+        ],
     )
     mid = repo.get_item(conn, iid)["metrics"][0]["id"]
-    v = repo.update_item(conn, iid, {"result": "40% faster"}, "user_voice",
-                         metric_updates=[{"id": mid, "delta_pct": -40, "source_text": "40%"}])
+    v = repo.update_item(
+        conn,
+        iid,
+        {"result": "40% faster"},
+        "user_voice",
+        metric_updates=[{"id": mid, "delta_pct": -40, "source_text": "40%"}],
+    )
     assert v == 2
     item = repo.get_item(conn, iid)
     assert item["metrics"][0]["delta_pct"] == -40 and item["result"] == "40% faster"
@@ -95,7 +125,8 @@ def test_pending_lifecycle(conn):
     iid = _item(conn)
     pid = repo.create_pending(conn, iid, "metric", "What was p99 before and after, in ms?")
     assert repo.create_pending(conn, iid, "metric", "dup?") == pid
-    repo.mark_asked(conn, [pid]); repo.mark_asked(conn, [pid])
+    repo.mark_asked(conn, [pid])
+    repo.mark_asked(conn, [pid])
     assert repo.get_pending(conn, pid)["status"] == "open"
     repo.mark_asked(conn, [pid])
     assert repo.get_pending(conn, pid)["status"] == "expired"
@@ -127,7 +158,10 @@ def test_vault_if_match_retries(tmp_path):
     def flaky_put(key, data, **kw):
         if state["n"] == 0:
             state["n"] += 1
-            orig_put(key, store.get(key).data + b"", )  # same content, new write
+            orig_put(
+                key,
+                store.get(key).data + b"",
+            )  # same content, new write
             raise PreconditionFailed(key)
         return orig_put(key, data, **kw)
 
@@ -144,12 +178,25 @@ async def test_hybrid_retrieval(tmp_path):
     emb = FakeEmbedder()
 
     def seed(c):
-        _item(c, title="Ledger migration", what="Migrated the ledger tables to Postgres",
-              occurred_on="2026-10-20")
-        _item(c, title="Cache cleanup", what="Removed stale cache keys in the ledger API",
-              occurred_on="2026-10-21")
-        _item(c, title="Mentored intern", what="Helped the intern debug her first PR",
-              kind="soft_skill", occurred_on="2026-10-15")
+        _item(
+            c,
+            title="Ledger migration",
+            what="Migrated the ledger tables to Postgres",
+            occurred_on="2026-10-20",
+        )
+        _item(
+            c,
+            title="Cache cleanup",
+            what="Removed stale cache keys in the ledger API",
+            occurred_on="2026-10-21",
+        )
+        _item(
+            c,
+            title="Mentored intern",
+            what="Helped the intern debug her first PR",
+            kind="soft_skill",
+            occurred_on="2026-10-15",
+        )
 
     v.write(seed)
     assert await retrieval.index(v, emb) == 3

@@ -269,6 +269,10 @@ function LiveReflect({
       setSendError(null);
       touch();
       stopAudio(); // the user is talking now
+      // Sending is a user gesture too (Enter or the send button), so it unlocks audio for the
+      // reply and replaces the "Start reflection" tap.
+      unlockAudio();
+      setNeedsStart(false);
       const item: OutboxItem = { client_turn_id: uuid(), text, dictated_chars: dictated };
       setJSON(KEYS.outbox(sid), item);
       setTurns((ts) => [
@@ -393,11 +397,13 @@ function LiveReflect({
     // Runs once per mount; the component is keyed by its URL params.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // End the session if the page is closed mid-reflection.
+  // Tell the server the page went away. It's a soft signal (DECISIONS DB-13): the server ends the
+  // session only if no turn arrives within 2 minutes, so a reload or the Wispr keyboard round trip
+  // on iPhone doesn't end the reflection.
   useEffect(() => {
     const onHide = (e: PageTransitionEvent) => {
       if (e.persisted) return; // kept in the back/forward cache: it may come back
-      if (activeRef.current && sidRef.current) endSessionBeacon(sidRef.current, "user");
+      if (activeRef.current && sidRef.current) endSessionBeacon(sidRef.current, "idle");
     };
     window.addEventListener("pagehide", onHide);
     return () => window.removeEventListener("pagehide", onHide);

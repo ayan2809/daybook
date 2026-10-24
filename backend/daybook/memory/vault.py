@@ -101,7 +101,9 @@ class Vault:
                     else:
                         new_etag = self.store.put(self.key, data, if_match=self.etag)
                 except PreconditionFailed:
-                    log.info("vault %s changed underneath us (attempt %d); retrying", self.key, attempt)
+                    log.info(
+                        "vault %s changed underneath us (attempt %d); retrying", self.key, attempt
+                    )
                     shutil.rmtree(work.parent, ignore_errors=True)
                     self.etag = "stale"  # force a re-download
                     continue

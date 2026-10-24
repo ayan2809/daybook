@@ -15,8 +15,13 @@ from daybook.memory import repo
 from daybook.push.webpush import Sender
 
 WINDOW_MIN = 15
-DEFAULT_REMINDER = {"enabled": False, "time": "19:00", "days": [1, 2, 3, 4, 5],
-                    "second_nudge": True, "second_time": "21:00"}
+DEFAULT_REMINDER = {
+    "enabled": False,
+    "time": "19:00",
+    "days": [1, 2, 3, 4, 5],
+    "second_nudge": True,
+    "second_time": "21:00",
+}
 
 
 def _in_window(now_local: datetime, hhmm: str) -> bool:
@@ -62,8 +67,11 @@ def tick(vault, store, prefix: str, sender: Sender, now: datetime) -> dict:
     log = json.loads(b.data) if b else {}
     if log.get(nudge):
         return {"sent": 0, "nudge": nudge, "reason": "already sent"}
-    payload = {"title": "Daybook", "body": body_for(n_pending),
-               "url": "/reflect?mode=guided&src=push"}
+    payload = {
+        "title": "Daybook",
+        "body": body_for(n_pending),
+        "url": "/reflect?mode=guided&src=push",
+    }
     sent, gone = 0, []
     for s in subs:
         r = sender.send(s, payload)
@@ -72,11 +80,13 @@ def tick(vault, store, prefix: str, sender: Sender, now: datetime) -> dict:
         elif r.gone:
             gone.append(s["id"])
     if gone or sent:
+
         def write(conn):
             for sid in gone:
                 conn.execute("DELETE FROM push_subscriptions WHERE id = ?", (sid,))
             if sent:
                 conn.execute("UPDATE push_subscriptions SET last_success_at = ?", (repo.now_iso(),))
+
         vault.write(write)
     log[nudge] = repo.now_iso()
     store.put(log_key, json.dumps(log).encode())

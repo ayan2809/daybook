@@ -66,8 +66,10 @@ async def session_judge(app: App, user: User, sid: str) -> dict:
             conn.execute("UPDATE sessions SET stats = ? WHERE id = ?", (json.dumps(stats), sid))
 
     app.vault(user).write(write)
-    app.store.put(f"traces/{user.uid}/{state.local_date}/jobs/judge-{sid}.json",
-                  Trace.dumps(trace.finish(scores=s)))
+    app.store.put(
+        f"traces/{user.uid}/{state.local_date}/jobs/judge-{sid}.json",
+        Trace.dumps(trace.finish(scores=s)),
+    )
     for _ in range(3):  # mark judged in the session file
         loaded = st.load(app.store, user.prefix, sid)
         state, etag = loaded
@@ -92,9 +94,13 @@ async def cleanup_stale_sessions(app: App, now: datetime) -> dict:
     from daybook.engine.finalize import finalize_session
 
     ended, retried = 0, 0
-    prefixes = ["users/owner/"] + sorted({
-        "/".join(k.split("/")[:2]) + "/" for k in app.store.list("demo/") if k.endswith("active.json")
-    })
+    prefixes = ["users/owner/"] + sorted(
+        {
+            "/".join(k.split("/")[:2]) + "/"
+            for k in app.store.list("demo/")
+            if k.endswith("active.json")
+        }
+    )
     for prefix in prefixes:
         user = OWNER if prefix == OWNER.prefix else demo_user(prefix.split("/")[1])
         sid = conductor.active_pointer(app, user)
@@ -103,17 +109,23 @@ async def cleanup_stale_sessions(app: App, now: datetime) -> dict:
             if loaded and loaded[0].status == "active":
                 s = loaded[0]
                 hidden = s.flags.get("hidden_at")
-                last = s.turns[-1].created_at if s.turns else s.started_at
-                idle = hidden and hidden >= last and \
-                    (now - datetime.fromisoformat(hidden)).total_seconds() > IDLE_HIDDEN_SEC
+                last = datetime.fromisoformat(s.turns[-1].created_at if s.turns else s.started_at)
+                idle = (
+                    bool(hidden)
+                    and datetime.fromisoformat(hidden) >= last
+                    and (now - datetime.fromisoformat(hidden)).total_seconds() > IDLE_HIDDEN_SEC
+                )
                 if idle or s.elapsed(now) > s.limit_sec + STALE_SEC:
                     await conductor.end_session(app, user, sid, "idle", now)
                     ended += 1
         if user.role == "owner":
             for key in app.store.list(f"{prefix}sessions/")[-20:]:
                 loaded = st.load(app.store, prefix, key.rsplit("/", 1)[1][:-5])
-                if loaded and (loaded[0].flags.get("finalize_queued") or loaded[0].status == "failed") \
-                        and app.spend.status("owner", now) == "ok":
+                if (
+                    loaded
+                    and (loaded[0].flags.get("finalize_queued") or loaded[0].status == "failed")
+                    and app.spend.status("owner", now) == "ok"
+                ):
                     await finalize_session(app, user, loaded[0].id)
                     retried += 1
     return {"ended": ended, "retried": retried}

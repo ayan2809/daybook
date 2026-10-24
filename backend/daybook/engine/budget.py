@@ -38,8 +38,10 @@ class Counter:
                 cur[k] = round(cur.get(k, 0) + v, 6)
             try:
                 self.store.put(
-                    self.key, json.dumps(cur).encode(),
-                    if_match=b.etag if b else None, if_none_match=b is None,
+                    self.key,
+                    json.dumps(cur).encode(),
+                    if_match=b.etag if b else None,
+                    if_none_match=b is None,
                     content_type="application/json",
                 )
                 return cur
@@ -59,8 +61,12 @@ class SpendBreaker:
 
     def today(self, now: datetime) -> dict:
         d = self._counter(now).read()
-        return {"total": d.get("total", 0.0), "demo": d.get("demo", 0.0),
-                "owner": d.get("owner", 0.0), "budget": self.daily}
+        return {
+            "total": d.get("total", 0.0),
+            "demo": d.get("demo", 0.0),
+            "owner": d.get("owner", 0.0),
+            "budget": self.daily,
+        }
 
     def add(self, role: str, cost: float, now: datetime) -> None:
         if cost > 0:
@@ -92,14 +98,20 @@ class DemoCaps:
     def usage(self, sandbox_id: str, now: datetime) -> dict:
         day, sb = self._day(now).read(), self._sandbox(sandbox_id).read()
         return {
-            "sessions_left": max(0, min(
-                self.s.demo_sandbox_sessions - sb.get("sessions", 0),
-                self.s.demo_daily_sessions - day.get("sessions", 0),
-            )),
-            "asks_left": max(0, min(
-                self.s.demo_sandbox_asks - sb.get("asks", 0),
-                self.s.demo_daily_asks - day.get("asks", 0),
-            )),
+            "sessions_left": max(
+                0,
+                min(
+                    self.s.demo_sandbox_sessions - sb.get("sessions", 0),
+                    self.s.demo_daily_sessions - day.get("sessions", 0),
+                ),
+            ),
+            "asks_left": max(
+                0,
+                min(
+                    self.s.demo_sandbox_asks - sb.get("asks", 0),
+                    self.s.demo_daily_asks - day.get("asks", 0),
+                ),
+            ),
         }
 
     def take(self, sandbox_id: str, what: str, now: datetime) -> bool:

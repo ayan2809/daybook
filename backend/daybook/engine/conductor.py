@@ -62,8 +62,15 @@ def board_view(state: SessionState) -> dict:
             chip = "needs_outcome"
         else:
             chip = "captured"
-        items.append({"temp_id": tid, "kind": it["kind"], "title": it["title"], "chip": chip,
-                      "metrics_text": metrics})
+        items.append(
+            {
+                "temp_id": tid,
+                "kind": it["kind"],
+                "title": it["title"],
+                "chip": chip,
+                "metrics_text": metrics,
+            }
+        )
     return {"items": items}
 
 
@@ -74,13 +81,23 @@ def pending_action_view(state: SessionState) -> dict | None:
 
 def session_view(state: SessionState, now: datetime, suggestions: list[str] | None = None) -> dict:
     return {
-        "id": state.id, "mode": state.mode, "status": state.status, "phase": state.phase,
-        "limit_sec": state.limit_sec, "started_at": state.started_at,
+        "id": state.id,
+        "mode": state.mode,
+        "status": state.status,
+        "phase": state.phase,
+        "limit_sec": state.limit_sec,
+        "started_at": state.started_at,
         "seconds_left": state.seconds_left(now) if state.status == "active" else 0,
         "voice_enabled": state.voice_enabled,
         "turns": [
-            {"seq": t.seq, "role": t.role, "text": t.text, "created_at": t.created_at,
-             "turn_id": t.turn_id, "safety": t.safety}
+            {
+                "seq": t.seq,
+                "role": t.role,
+                "text": t.text,
+                "created_at": t.created_at,
+                "turn_id": t.turn_id,
+                "safety": t.safety,
+            }
             for t in state.turns
         ],
         "board": board_view(state),
@@ -124,13 +141,25 @@ def _set_active(app: App, user: User, sid: str | None) -> None:
 # ------------------------------------------------------------------ speaking (Chat + guards)
 
 
-async def speak(app: App, state: SessionState, move: Move, trace: Trace, now: datetime,
-                last_user: str, extra_sources: list[str] = ()) -> str:
+async def speak(
+    app: App,
+    state: SessionState,
+    move: Move,
+    trace: Trace,
+    now: datetime,
+    last_user: str,
+    extra_sources: list[str] = (),
+) -> str:
     sources = [*state.user_texts(), *move.say_back, move.template, *(extra_sources or [])]
     if move.about:
         sources.append(move.about)
-    gctx = guards.GuardContext(sources=sources, last_user_text=last_user, max_words=move.max_words,
-                               wrap=move.wrap, promised=move.promised)
+    gctx = guards.GuardContext(
+        sources=sources,
+        last_user_text=last_user,
+        max_words=move.max_words,
+        wrap=move.wrap,
+        promised=move.promised,
+    )
     if not move.use_llm:
         with trace.span("guards", "code", **{"daybook.guard": "template"}):
             pass
@@ -152,14 +181,18 @@ async def speak(app: App, state: SessionState, move: Move, trace: Trace, now: da
                 log_event(event="guard_fidelity_fail", session_id=state.id, move=move.name)
             if attempt == 0:
                 text, resp = await chat.reply(
-                    app.deps, trace, turns,
-                    note + "\ncorrection: " + guards.correction_note(failed, gctx), attempt=1,
+                    app.deps,
+                    trace,
+                    turns,
+                    note + "\ncorrection: " + guards.correction_note(failed, gctx),
+                    attempt=1,
                 )
                 continue
         text = None
         break
-    with trace.span("guards", "code", **{"daybook.guard": results,
-                                         "daybook.fallback": text is None}):
+    with trace.span(
+        "guards", "code", **{"daybook.guard": results, "daybook.fallback": text is None}
+    ):
         pass
     if resp is not None and resp.blocked:
         log_event(event="chat_blocked", session_id=state.id)
@@ -171,7 +204,11 @@ async def speak(app: App, state: SessionState, move: Move, trace: Trace, now: da
 
 
 async def start_session(
-    app: App, user: User, mode: str, now: datetime, item_id: int | None = None,
+    app: App,
+    user: User,
+    mode: str,
+    now: datetime,
+    item_id: int | None = None,
     limit_override: int | None = None,
 ) -> SessionState:
     sid_active = active_pointer(app, user)
@@ -181,8 +218,9 @@ async def start_session(
             if phases.past_grace(loaded[0], now):
                 await end_session(app, user, sid_active, "time_limit", now)
             else:
-                raise SessionError(409, "session_active", "A reflection is already running.",
-                                   session_id=sid_active)
+                raise SessionError(
+                    409, "session_active", "A reflection is already running.", session_id=sid_active
+                )
     vault = app.vault(user)
     with vault.read() as conn:
         profile = repo.get_profile(conn) or {}
@@ -204,22 +242,39 @@ async def start_session(
     if user.role == "demo":
         limit = app.settings.demo_session_limit_sec
     else:
-        limit = limit_override or int(prefs.get("session_limit_sec") or app.settings.session_limit_sec)
+        limit = limit_override or int(
+            prefs.get("session_limit_sec") or app.settings.session_limit_sec
+        )
     state = SessionState(
-        id=uuid.uuid4().hex[:16], uid=user.uid, role=user.role, mode=mode,
-        local_date=today.isoformat(), tz=tz, started_at=now.isoformat(), limit_sec=limit,
+        id=uuid.uuid4().hex[:16],
+        uid=user.uid,
+        role=user.role,
+        mode=mode,
+        local_date=today.isoformat(),
+        tz=tz,
+        started_at=now.isoformat(),
+        limit_sec=limit,
         phase={"guided": "open", "dump": "dump", "quick": "capture", "edit": "edit"}[mode],
         pending_queue=[
-            PendingAsk(id=p["id"], question=p["question"], kind=p["kind"], item_id=p["item_id"],
-                       item_title=p["item_title"])
+            PendingAsk(
+                id=p["id"],
+                question=p["question"],
+                kind=p["kind"],
+                item_id=p["item_id"],
+                item_title=p["item_title"],
+            )
             for p in pending[: phases.MAX_PENDING_PER_SESSION]
         ],
-        tts_char_limit=app.settings.demo_tts_chars if user.role == "demo"
+        tts_char_limit=app.settings.demo_tts_chars
+        if user.role == "demo"
         else app.settings.session_tts_chars,
         voice_enabled=bool(prefs.get("voice", True)) and app.tts is not None,
-        opener_context={"projects": [{"id": p["id"], "name": p["name"], "aliases": p["aliases"]}
-                                     for p in projects],
-                        "display_name": profile.get("display_name")},
+        opener_context={
+            "projects": [
+                {"id": p["id"], "name": p["name"], "aliases": p["aliases"]} for p in projects
+            ],
+            "display_name": profile.get("display_name"),
+        },
         edit_item_id=item_id if mode == "edit" else None,
     )
     if app.spend.status(user.role, now) == "over":
@@ -227,16 +282,23 @@ async def start_session(
     trace = Trace("turn", session_id=state.id, seq=1, user_text=None)
     if mode == "edit":
         fact = context.record_fact(edit_item)
-        move = Move("open_edit", f"{fact} What should I change?", say_back=[fact], use_llm=False,
-                    max_words=70)
+        move = Move(
+            "open_edit",
+            f"{fact} What should I change?",
+            say_back=[fact],
+            use_llm=False,
+            max_words=70,
+        )
         state.pending_action = PendingActionState(
-            kind="describe_edit", prompt="Say what to change.",
+            kind="describe_edit",
+            prompt="Say what to change.",
             data={"item_id": item_id, "tries": 0},
         )
     else:
         move = agenda.opener(state, profile.get("display_name"), plan["title"] if plan else None)
-    with trace.span("analyzer.decide", "code", **{"daybook.move": move.name,
-                                                  "daybook.phase": state.phase}):
+    with trace.span(
+        "analyzer.decide", "code", **{"daybook.move": move.name, "daybook.phase": state.phase}
+    ):
         pass
     text = await speak(app, state, move, trace, now, "")
     if move.name == "open_pending":
@@ -256,8 +318,15 @@ async def start_session(
 
 def _append_assistant(state: SessionState, text: str, move: Move, now: datetime) -> TurnRec:
     seq = state.next_seq()
-    t = TurnRec(seq=seq, role="assistant", text=text, created_at=_iso(now),
-                turn_id=f"{state.id}.{seq}", move=move.name, safety=move.name == "safety")
+    t = TurnRec(
+        seq=seq,
+        role="assistant",
+        text=text,
+        created_at=_iso(now),
+        turn_id=f"{state.id}.{seq}",
+        move=move.name,
+        safety=move.name == "safety",
+    )
     state.turns.append(t)
     return t
 
@@ -277,7 +346,12 @@ def _account(app: App, user: User, state: SessionState, trace: Trace, now: datet
 
 
 async def handle_turn(
-    app: App, user: User, sid: str, client_turn_id: str, text: str, dictated_chars: int,
+    app: App,
+    user: User,
+    sid: str,
+    client_turn_id: str,
+    text: str,
+    dictated_chars: int,
     now: datetime,
 ) -> dict:
     for attempt in range(3):
@@ -305,32 +379,55 @@ async def handle_turn(
     raise SessionError(409, "conflict", "The session changed in another tab. Please retry.")
 
 
-async def _run_turn(app: App, user: User, state: SessionState, text: str, dictated: int,
-                    now: datetime) -> dict:
+async def _run_turn(
+    app: App, user: User, state: SessionState, text: str, dictated: int, now: datetime
+) -> dict:
     text = text.strip()[:4000]
     seq = state.next_seq()
     crisis = safety.is_crisis(text)
-    trace = Trace("turn", session_id=state.id, seq=seq,
-                  user_text=None if crisis else text)
-    state.turns.append(TurnRec(seq=seq, role="user", text=text, created_at=_iso(now),
-                               dictated_chars=max(0, min(dictated or 0, len(text)))))
+    trace = Trace("turn", session_id=state.id, seq=seq, user_text=None if crisis else text)
+    state.turns.append(
+        TurnRec(
+            seq=seq,
+            role="user",
+            text=text,
+            created_at=_iso(now),
+            dictated_chars=max(0, min(dictated or 0, len(text))),
+        )
+    )
     if crisis:
         return _safety_reply(app, user, state, seq, trace, now, "precheck")
 
     today = date.fromisoformat(state.local_date)
     pa = state.pending_action
     awaiting = pa.prompt if pa else None
-    pending = ({"id": state.current_pending.id, "question": state.current_pending.question}
-               if state.current_pending else None)
+    pending = (
+        {"id": state.current_pending.id, "question": state.current_pending.question}
+        if state.current_pending
+        else None
+    )
     run_fast = state.mode != "edit"
-    board = {k: {kk: vv for kk, vv in v.items() if kk not in ("ok",)}
-             for k, v in state.board_items.items()}
-    tasks = [researcher.label_turn(app.deps, trace, text, today, state.tz,
-                                   state.opener_context.get("projects", []), pending,
-                                   state.last_assistant(), awaiting)]
+    board = {
+        k: {kk: vv for kk, vv in v.items() if kk not in ("ok",)}
+        for k, v in state.board_items.items()
+    }
+    tasks = [
+        researcher.label_turn(
+            app.deps,
+            trace,
+            text,
+            today,
+            state.tz,
+            state.opener_context.get("projects", []),
+            pending,
+            state.last_assistant(),
+            awaiting,
+        )
+    ]
     if run_fast:
-        tasks.append(analyzer_fast.fast_pass(app.deps, trace, state.turn_dicts(), board, today,
-                                             state.mode))
+        tasks.append(
+            analyzer_fast.fast_pass(app.deps, trace, state.turn_dicts(), board, today, state.mode)
+        )
     out = await asyncio.gather(*tasks)
     label: TurnLabel = out[0]
     delta: DraftDelta | None = out[1] if run_fast else None
@@ -355,9 +452,15 @@ async def _run_turn(app: App, user: User, state: SessionState, text: str, dictat
         dspan.attrs["daybook.step"] = step.kind
     move, extra_sources = await _resolve(app, user, state, step, label, text, trace, now)
     _apply_move_effects(state, move)
-    dspan.attrs.update({"daybook.move": move.name, "daybook.target": move.target,
-                        "daybook.gap": move.gap, "daybook.phase": state.phase,
-                        "daybook.seconds_left": state.seconds_left(now)})
+    dspan.attrs.update(
+        {
+            "daybook.move": move.name,
+            "daybook.target": move.target,
+            "daybook.gap": move.gap,
+            "daybook.phase": state.phase,
+            "daybook.seconds_left": state.seconds_left(now),
+        }
+    )
     reply = await speak(app, state, move, trace, now, text, extra_sources)
     a = _append_assistant(state, reply, move, now)
     if move.end:
@@ -365,13 +468,26 @@ async def _run_turn(app: App, user: User, state: SessionState, text: str, dictat
         state.status = "ended"
         state.ended_at = _iso(now)
         state.end_reason = "time_limit" if phases.over_limit(state, now) else "user"
-    if len([t for t in state.turns if t.role == "user"]) >= app.settings.session_max_turns and not move.end:
+    if (
+        len([t for t in state.turns if t.role == "user"]) >= app.settings.session_max_turns
+        and not move.end
+    ):
         state.flags["turn_budget_hit"] = True
     if state.budgets["tokens_in"] > app.settings.session_max_tokens_in:
         state.voice_enabled = False
     _account(app, user, state, trace, now)
-    d = _save_trace(app, user, state, seq, trace, user_text=text, reply_text=reply, move=move.name, intent=label.primary_intent,
-                    injection_suspected=label.injection_suspected)
+    d = _save_trace(
+        app,
+        user,
+        state,
+        seq,
+        trace,
+        user_text=text,
+        reply_text=reply,
+        move=move.name,
+        intent=label.primary_intent,
+        injection_suspected=label.injection_suspected,
+    )
     state.turn_latencies.append(d["totals"]["latency_ms"])
     if user.role == "demo":
         state.flags["last_trace"] = d
@@ -380,11 +496,16 @@ async def _run_turn(app: App, user: User, state: SessionState, text: str, dictat
 
 def _result(state: SessionState, a: TurnRec, move: Move, now: datetime, safety_info=None) -> dict:
     return {
-        "turn_id": a.turn_id, "reply_text": a.text, "phase": state.phase,
+        "turn_id": a.turn_id,
+        "reply_text": a.text,
+        "phase": state.phase,
         "seconds_left": state.seconds_left(now) if state.status == "active" else 0,
-        "board": board_view(state), "pending_action": pending_action_view(state),
-        "ended": state.status != "active", "voice": state.voice_enabled and not safety_info,
-        "safety": safety_info, "suggestions": [],
+        "board": board_view(state),
+        "pending_action": pending_action_view(state),
+        "ended": state.status != "active",
+        "voice": state.voice_enabled and not safety_info,
+        "safety": safety_info,
+        "suggestions": [],
     }
 
 
@@ -397,8 +518,9 @@ def _safety_reply(app, user, state, seq, trace, now, source: str) -> dict:
     a = _append_assistant(state, safety.MESSAGE, move, now)
     state.flags["safety_ran"] = True
     _account(app, user, state, trace, now)
-    _save_trace(app, user, state, seq, trace, user_text=None, reply_text="(safety template)",
-                move="safety")
+    _save_trace(
+        app, user, state, seq, trace, user_text=None, reply_text="(safety template)", move="safety"
+    )
     res = _result(state, a, move, now, safety.safety_payload())
     res["voice"] = state.voice_enabled
     return res
@@ -407,10 +529,11 @@ def _safety_reply(app, user, state, seq, trace, now, source: str) -> dict:
 def _delta_applies(state: SessionState, label: TurnLabel) -> bool:
     if state.pending_action is not None or state.current_pending is not None:
         return "reflect" in label.secondary_intents
-    return label.primary_intent in (
-        "reflect", "vent", "metric_answer", "not_quantifiable", "defer", "support_request"
-    ) or "reflect" in label.secondary_intents or (
-        label.primary_intent == "meta" and label.meta_command == "wrap_up"
+    return (
+        label.primary_intent
+        in ("reflect", "vent", "metric_answer", "not_quantifiable", "defer", "support_request")
+        or "reflect" in label.secondary_intents
+        or (label.primary_intent == "meta" and label.meta_command == "wrap_up")
     )
 
 
@@ -437,7 +560,9 @@ def _merge_delta(state: SessionState, delta: DraftDelta) -> dict:
         prev = state.board_items.get(it.temp_id)
         if prev:  # keep metrics captured earlier
             texts = {m["text"] for m in kept}
-            d["metrics_raw"] = kept + [m for m in prev.get("metrics_raw", []) if m["text"] not in texts]
+            d["metrics_raw"] = kept + [
+                m for m in prev.get("metrics_raw", []) if m["text"] not in texts
+            ]
         state.board_items[it.temp_id] = d
     if delta.gaps or delta.items:
         gaps = []
@@ -453,9 +578,12 @@ def _merge_delta(state: SessionState, delta: DraftDelta) -> dict:
         state.energy = delta.energy
     if delta.mood_word:
         state.mood_word = delta.mood_word
-    return {"daybook.board.items": len(state.board_items), "daybook.board.gaps": len(state.gaps),
-            "daybook.validate.bad_quotes": bad_quotes,
-            "daybook.validate.dropped_numbers": dropped_numbers}
+    return {
+        "daybook.board.items": len(state.board_items),
+        "daybook.board.gaps": len(state.gaps),
+        "daybook.validate.bad_quotes": bad_quotes,
+        "daybook.validate.dropped_numbers": dropped_numbers,
+    }
 
 
 def _apply_move_effects(state: SessionState, move: Move) -> None:
@@ -468,7 +596,13 @@ def _apply_move_effects(state: SessionState, move: Move) -> None:
         state.phase = "close_loops"
         return
     if state.phase == "close_loops" and move.name not in (
-        "confirm_metric", "repeat", "time_left", "pause", "reflect_vent", "support", "steer_back"
+        "confirm_metric",
+        "repeat",
+        "time_left",
+        "pause",
+        "reflect_vent",
+        "support",
+        "steer_back",
     ):
         state.phase = "explore"
     if move.name == "ask_gap" and move.target:
@@ -480,8 +614,12 @@ def _apply_move_effects(state: SessionState, move: Move) -> None:
         elif state.phase in ("open", "close_loops"):
             state.phase = "explore"
     elif move.name.startswith("ask_") and move.name != "ask_pending":
-        key = {"ask_hard_part": "hard_part", "ask_learning": "learning",
-               "ask_tomorrow": "tomorrow", "ask_open": "what_else"}.get(move.name)
+        key = {
+            "ask_hard_part": "hard_part",
+            "ask_learning": "learning",
+            "ask_tomorrow": "tomorrow",
+            "ask_open": "what_else",
+        }.get(move.name)
         if key:
             state.open_prompts_done.append(key)
         state.flags["last_target"] = None
@@ -492,8 +630,16 @@ def _apply_move_effects(state: SessionState, move: Move) -> None:
 # ------------------------------------------------------------------ async steps
 
 
-async def _resolve(app: App, user: User, state: SessionState, step: agenda.Step, label: TurnLabel,
-                   text: str, trace: Trace, now: datetime) -> tuple[Move, list[str]]:
+async def _resolve(
+    app: App,
+    user: User,
+    state: SessionState,
+    step: agenda.Step,
+    label: TurnLabel,
+    text: str,
+    trace: Trace,
+    now: datetime,
+) -> tuple[Move, list[str]]:
     k = step.kind
     if k == "move":
         return step.move, []
@@ -508,8 +654,17 @@ async def _resolve(app: App, user: User, state: SessionState, step: agenda.Step,
     if k == "find_again":
         pa = state.pending_action
         hint = f"{pa.data.get('request', '')} {text}".strip()
-        return await _edit_search(app, user, state, label, hint, trace, now,
-                                  tries=pa.data.get("tries", 1), request=pa.data.get("request"))
+        return await _edit_search(
+            app,
+            user,
+            state,
+            label,
+            hint,
+            trace,
+            now,
+            tries=pa.data.get("tries", 1),
+            request=pa.data.get("request"),
+        )
     if k == "pick":
         return await _pick(app, user, state, label, text, trace, now)
     if k == "describe_edit":
@@ -537,8 +692,9 @@ async def _pending_answer(app, user, state: SessionState, label, text, trace, no
     vault = app.vault(user)
 
     def resolve(status: str, answer: str | None):
-        state.resolved_pending.append({"pending_id": p.id, "resolution": status,
-                                       "item_id": p.item_id, "answer_text": answer})
+        state.resolved_pending.append(
+            {"pending_id": p.id, "resolution": status, "item_id": p.item_id, "answer_text": answer}
+        )
         if p.item_id and p.item_id not in state.touched_items:
             state.touched_items.append(p.item_id)
         state.current_pending = None
@@ -547,17 +703,27 @@ async def _pending_answer(app, user, state: SessionState, label, text, trace, no
     if intent == "defer":
         vault.write(lambda c: repo.snooze_pending(c, p.id, _tomorrow(state)))
         resolve("deferred", text)
-        return _after(state, now, "Say it's no problem and you'll ask again tomorrow.",
-                      "No problem, I'll ask again tomorrow.")
+        return _after(
+            state,
+            now,
+            "Say it's no problem and you'll ask again tomorrow.",
+            "No problem, I'll ask again tomorrow.",
+        )
     if intent == "not_quantifiable":
         vault.write(lambda c: repo.resolve_pending(c, p.id, "not_quantifiable", text))
         resolve("not_quantifiable", text)
-        return _after(state, now, "Say that's fine; you'll keep it as a qualitative one.",
-                      "That's fine, I'll keep it as a qualitative one.")
+        return _after(
+            state,
+            now,
+            "Say that's fine; you'll keep it as a qualitative one.",
+            "That's fine, I'll keep it as a qualitative one.",
+        )
     with vault.read() as conn:
         item = repo.get_item(conn, p.item_id) if p.item_id else None
     ans = await analyzer_fast.parse_pending_answer(
-        app.deps, trace, p.question,
+        app.deps,
+        trace,
+        p.question,
         {"title": item["title"], "what": item["what"], "result": item["result"]} if item else None,
         text,
     )
@@ -577,22 +743,35 @@ async def _pending_answer(app, user, state: SessionState, label, text, trace, no
             number_supported(getattr(m, f), users) for f in ("baseline", "final", "delta_pct")
         )
         if ok:
-            metric = {"name": ans.metric_name or (item["title"] if item else "result"),
-                      "category": ans.category or "other", "unit": m.unit or "count",
-                      "baseline": m.baseline, "final": m.final, "delta_pct": m.delta_pct,
-                      "better_when": ans.better_when or "higher", "source_text": m.text,
-                      "approx": bool(re.search(r"\b(about|around|roughly|~|under|over|nearly)\b",
-                                               m.text, re.I))}
-            readback = ans.readback if not guards.failures(guards.check(
-                ans.readback, guards.GuardContext(sources=[text, p.question]))) \
+            metric = {
+                "name": ans.metric_name or (item["title"] if item else "result"),
+                "category": ans.category or "other",
+                "unit": m.unit or "count",
+                "baseline": m.baseline,
+                "final": m.final,
+                "delta_pct": m.delta_pct,
+                "better_when": ans.better_when or "higher",
+                "source_text": m.text,
+                "approx": bool(
+                    re.search(r"\b(about|around|roughly|~|under|over|nearly)\b", m.text, re.I)
+                ),
+            }
+            readback = (
+                ans.readback
+                if not guards.failures(
+                    guards.check(ans.readback, guards.GuardContext(sources=[text, p.question]))
+                )
                 else f"So that's {m.text}?"
+            )
             state.pending_action = PendingActionState(
-                kind="confirm_metric", prompt="Is that right?",
+                kind="confirm_metric",
+                prompt="Is that right?",
                 data={"pending": p.model_dump(), "metric": metric, "answer_text": text},
             )
             state.current_pending = None
-            return Move("confirm_metric", readback, use_llm=False, say_back=[readback],
-                        pending_id=p.id)
+            return Move(
+                "confirm_metric", readback, use_llm=False, say_back=[readback], pending_id=p.id
+            )
     # an answer without a number (outcome / ownership)
     vault.write(lambda c: repo.resolve_pending(c, p.id, "answered", text))
     resolve("answered", text)
@@ -607,8 +786,12 @@ async def _confirm(app, user, state: SessionState, yes: bool, text, trace, now):
         state.pending_action = None
         if not yes:
             state.current_pending = p
-            return Move("ask_pending", "No problem. What's the right number?", use_llm=False,
-                        pending_id=p.id), []
+            return Move(
+                "ask_pending",
+                "No problem. What's the right number?",
+                use_llm=False,
+                pending_id=p.id,
+            ), []
         metric, answer = pa.data["metric"], pa.data["answer_text"]
 
         def write(conn):
@@ -616,15 +799,25 @@ async def _confirm(app, user, state: SessionState, yes: bool, text, trace, now):
                 repo.add_metric(conn, p.item_id, metric)
                 item = repo.get_item(conn, p.item_id)
                 others = [q for q in item["open_pending"] if q["id"] != p.id]
-                fields = {"status": "active"} if item["status"] == "draft" and not others \
-                    and not item["validation_note"] else {}
-                repo.update_item(conn, p.item_id, fields, "pending_answer",
-                                 f"answered: {p.question}")
+                fields = (
+                    {"status": "active"}
+                    if item["status"] == "draft" and not others and not item["validation_note"]
+                    else {}
+                )
+                repo.update_item(
+                    conn, p.item_id, fields, "pending_answer", f"answered: {p.question}"
+                )
             repo.resolve_pending(conn, p.id, "answered", answer)
 
         vault.write(write)
-        state.resolved_pending.append({"pending_id": p.id, "resolution": "answered",
-                                       "item_id": p.item_id, "answer_text": answer})
+        state.resolved_pending.append(
+            {
+                "pending_id": p.id,
+                "resolution": "answered",
+                "item_id": p.item_id,
+                "answer_text": answer,
+            }
+        )
         if p.item_id and p.item_id not in state.touched_items:
             state.touched_items.append(p.item_id)
         return _after(state, now, "Say it's saved, in two or three words.", "Great, saved."), []
@@ -633,10 +826,15 @@ async def _confirm(app, user, state: SessionState, yes: bool, text, trace, now):
         item_id = pa.data["item_id"]
         if not yes:
             state.pending_action = PendingActionState(
-                kind="find_item", prompt="", data={"request": pa.data.get("request", ""),
-                                                   "tries": pa.data.get("tries", 1)})
-            return Move("edit_not_found", "Okay. Which one did you mean? Roughly when was it?",
-                        use_llm=False), []
+                kind="find_item",
+                prompt="",
+                data={"request": pa.data.get("request", ""), "tries": pa.data.get("tries", 1)},
+            )
+            return Move(
+                "edit_not_found",
+                "Okay. Which one did you mean? Roughly when was it?",
+                use_llm=False,
+            ), []
         return await _propose(app, user, state, item_id, pa.data.get("request") or text, trace, now)
 
     if pa.kind == "confirm_edit":
@@ -646,21 +844,45 @@ async def _confirm(app, user, state: SessionState, yes: bool, text, trace, now):
         item_id, patch = pa.data["item_id"], pa.data["patch"]
         sources = pa.data.get("sources", [])
         users = [*sources, text]
-        changes = {k: patch[k] for k in ("title", "what", "how", "result", "occurred_on")
-                   if patch.get(k)}
+        changes = {
+            k: patch[k] for k in ("title", "what", "how", "result", "occurred_on") if patch.get(k)
+        }
         mu, add = [], []
         for mc in patch.get("metric_changes", []):
-            if not all(number_supported(mc.get(f), users) for f in ("baseline", "final", "delta_pct")):
+            if not all(
+                number_supported(mc.get(f), users) for f in ("baseline", "final", "delta_pct")
+            ):
                 continue
             if mc.get("metric_id"):
-                mu.append({"id": mc["metric_id"], **{k: mc.get(k) for k in
-                           ("baseline", "final", "delta_pct", "source_text", "unit", "name")}})
+                mu.append(
+                    {
+                        "id": mc["metric_id"],
+                        **{
+                            k: mc.get(k)
+                            for k in (
+                                "baseline",
+                                "final",
+                                "delta_pct",
+                                "source_text",
+                                "unit",
+                                "name",
+                            )
+                        },
+                    }
+                )
             else:
                 add.append({**mc, "category": "other", "better_when": "higher"})
 
         def write(conn):
-            repo.update_item(conn, item_id, changes, "user_voice", f"voice edit: {text[:120]}",
-                             metric_updates=mu, add_metrics=add)
+            repo.update_item(
+                conn,
+                item_id,
+                changes,
+                "user_voice",
+                f"voice edit: {text[:120]}",
+                metric_updates=mu,
+                add_metrics=add,
+            )
 
         vault.write(write)
         state.touched_items.append(item_id)
@@ -681,69 +903,141 @@ def _edit_done(state: SessionState, now: datetime, line: str) -> Move:
 async def _propose(app, user, state, item_id: int, request: str, trace, now):
     with app.vault(user).read() as conn:
         item = repo.get_item(conn, item_id)
-    record = {"id": item["id"], "date": item["occurred_on"], "title": item["title"],
-              "what": item["what"], "how": item["how"], "result": item["result"],
-              "metrics": [{"metric_id": m["id"], "name": m["name"], "unit": m["unit"],
-                           "baseline": m["baseline"], "final": m["final"],
-                           "delta_pct": m["delta_pct"], "source_text": m["source_text"]}
-                          for m in item["metrics"]]}
+    record = {
+        "id": item["id"],
+        "date": item["occurred_on"],
+        "title": item["title"],
+        "what": item["what"],
+        "how": item["how"],
+        "result": item["result"],
+        "metrics": [
+            {
+                "metric_id": m["id"],
+                "name": m["name"],
+                "unit": m["unit"],
+                "baseline": m["baseline"],
+                "final": m["final"],
+                "delta_pct": m["delta_pct"],
+                "source_text": m["source_text"],
+            }
+            for m in item["metrics"]
+        ],
+    }
     patch = await analyzer_fast.propose_edit(app.deps, trace, record, request)
     sources = [request]
     if patch is None or not patch.understood or not patch.new_value_text:
         state.pending_action = PendingActionState(
-            kind="describe_edit", prompt="Say what to change.",
-            data={"item_id": item_id, "tries": 1})
-        return Move("describe_edit", "Got it, that one. What should I change about it?",
-                    use_llm=False), [context.record_fact(item)]
-    bad = [mc for mc in patch.metric_changes
-           if not all(number_supported(getattr(mc, f), sources) for f in ("baseline", "final", "delta_pct"))]
+            kind="describe_edit",
+            prompt="Say what to change.",
+            data={"item_id": item_id, "tries": 1},
+        )
+        return Move(
+            "describe_edit", "Got it, that one. What should I change about it?", use_llm=False
+        ), [context.record_fact(item)]
+    bad = [
+        mc
+        for mc in patch.metric_changes
+        if not all(
+            number_supported(getattr(mc, f), sources) for f in ("baseline", "final", "delta_pct")
+        )
+    ]
     if bad and not patch.result:
         state.pending_action = PendingActionState(
-            kind="describe_edit", prompt="Say the new value.", data={"item_id": item_id, "tries": 1})
+            kind="describe_edit", prompt="Say the new value.", data={"item_id": item_id, "tries": 1}
+        )
         return Move("describe_edit", "What's the new value, exactly?", use_llm=False), []
     line = f"So I'll change {patch.old_value_text} to {patch.new_value_text}. Okay?"
     state.pending_action = PendingActionState(
-        kind="confirm_edit", prompt=line,
-        data={"item_id": item_id, "patch": patch.model_dump(), "sources": sources})
+        kind="confirm_edit",
+        prompt=line,
+        data={"item_id": item_id, "patch": patch.model_dump(), "sources": sources},
+    )
     return Move("confirm_edit", line, use_llm=False, say_back=[line]), [context.record_fact(item)]
 
 
-async def _edit_search(app, user, state, label: TurnLabel, hint: str, trace, now, tries: int = 0,
-                       request: str | None = None):
+async def _edit_search(
+    app,
+    user,
+    state,
+    label: TurnLabel,
+    hint: str,
+    trace,
+    now,
+    tries: int = 0,
+    request: str | None = None,
+):
     request = request or hint
     q = label.entities.target_hint or hint
-    res = await context.find(app.deps, app.vault(user), app.embedder, q if tries == 0 else hint,
-                             label.entities.time_refs, trace, app.settings.abstain_cosine)
+    res = await context.find(
+        app.deps,
+        app.vault(user),
+        app.embedder,
+        q if tries == 0 else hint,
+        label.entities.time_refs,
+        trace,
+        app.settings.abstain_cosine,
+    )
     if res.status == "found":
         c = res.candidates[0]
         fact = c.field_values["fact"]
         state.pending_action = PendingActionState(
-            kind="confirm_item", prompt="Is this the one?",
-            data={"item_id": c.item_id, "request": request, "tries": tries + 1})
-        return Move("edit_readback", f"{fact} That one?", say_back=[fact],
-                    instruction="Read back the record fact word for word, then ask 'That one?'",
-                    max_words=60), [fact]
+            kind="confirm_item",
+            prompt="Is this the one?",
+            data={"item_id": c.item_id, "request": request, "tries": tries + 1},
+        )
+        return Move(
+            "edit_readback",
+            f"{fact} That one?",
+            say_back=[fact],
+            instruction="Read back the record fact word for word, then ask 'That one?'",
+            max_words=60,
+        ), [fact]
     if res.status == "ambiguous" and len(res.candidates) > 1:
         names = [c.title for c in res.candidates[:2]]
         state.pending_action = PendingActionState(
-            kind="pick_item", prompt="Which one?",
-            data={"candidates": [c.model_dump() for c in res.candidates[:3]], "request": request,
-                  "tries": tries + 1})
+            kind="pick_item",
+            prompt="Which one?",
+            data={
+                "candidates": [c.model_dump() for c in res.candidates[:3]],
+                "request": request,
+                "tries": tries + 1,
+            },
+        )
         line = f"I have two that could fit: {names[0]}, and {names[1]}. Which one?"
-        return Move("edit_pick", line, say_back=names, max_words=60,
-                    instruction="Name the two candidates and ask which one."), names
+        return Move(
+            "edit_pick",
+            line,
+            say_back=names,
+            max_words=60,
+            instruction="Name the two candidates and ask which one.",
+        ), names
     if tries >= 1:
         state.pending_action = None
-        return Move("edit_give_up", "I still can't find that one. You can fix it from the "
-                    "Timeline anytime.", use_llm=False), []
-    state.pending_action = PendingActionState(kind="find_item", prompt="",
-                                              data={"request": request, "tries": tries + 1})
-    return Move("edit_not_found", "I couldn't find that one. Roughly when was it?",
-                use_llm=False), []
+        return Move(
+            "edit_give_up",
+            "I still can't find that one. You can fix it from the Timeline anytime.",
+            use_llm=False,
+        ), []
+    state.pending_action = PendingActionState(
+        kind="find_item", prompt="", data={"request": request, "tries": tries + 1}
+    )
+    return Move(
+        "edit_not_found", "I couldn't find that one. Roughly when was it?", use_llm=False
+    ), []
 
 
-_ORDINALS = {"first": 0, "1st": 0, "one": 0, "second": 1, "2nd": 1, "two": 1, "other": 1,
-             "latter": 1, "former": 0, "third": 2}
+_ORDINALS = {
+    "first": 0,
+    "1st": 0,
+    "one": 0,
+    "second": 1,
+    "2nd": 1,
+    "two": 1,
+    "other": 1,
+    "latter": 1,
+    "former": 0,
+    "third": 2,
+}
 
 
 async def _pick(app, user, state, label, text, trace, now):
@@ -757,19 +1051,31 @@ async def _pick(app, user, state, label, text, trace, now):
                 chosen = cands[i]
                 break
         if chosen is None:
+
             def overlap(c):
                 words = {w for w in re.findall(r"[a-z0-9]+", c["title"].lower()) if len(w) > 2}
                 return len(words & set(re.findall(r"[a-z0-9]+", low)))
+
             best = max(cands, key=overlap)
             if overlap(best) > 0:
                 chosen = best
     if chosen:
-        return await _propose(app, user, state, chosen["item_id"], pa.data.get("request") or text,
-                              trace, now)
+        return await _propose(
+            app, user, state, chosen["item_id"], pa.data.get("request") or text, trace, now
+        )
     if pa.kind == "confirm_item" or pa.data.get("tries", 1) >= 2:
         hint = f"{pa.data.get('request', '')} {text}"
-        return await _edit_search(app, user, state, label, hint, trace, now,
-                                  tries=pa.data.get("tries", 1), request=pa.data.get("request"))
+        return await _edit_search(
+            app,
+            user,
+            state,
+            label,
+            hint,
+            trace,
+            now,
+            tries=pa.data.get("tries", 1),
+            request=pa.data.get("request"),
+        )
     pa.data["tries"] = pa.data.get("tries", 1) + 1
     names = [c["title"] for c in cands[:2]]
     return Move("edit_pick", f"Sorry, which one: {names[0]}, or {names[1]}?", use_llm=False), names
@@ -779,21 +1085,36 @@ async def _describe_edit(app, user, state, text, trace, now):
     pa = state.pending_action
     if pa.data.get("tries", 0) >= 3:
         state.pending_action = None
-        return _edit_done(state, now, "Let's leave it for now; you can edit it from the Timeline."), []
+        return _edit_done(
+            state, now, "Let's leave it for now; you can edit it from the Timeline."
+        ), []
     pa.data["tries"] = pa.data.get("tries", 0) + 1
     return await _propose(app, user, state, pa.data["item_id"], text, trace, now)
 
 
 async def _recall(app, user, state, label, text, trace, now):
     q = label.entities.target_hint or text
-    res = await context.find(app.deps, app.vault(user), app.embedder, q, label.entities.time_refs,
-                             trace, app.settings.abstain_cosine, verify=False)
+    res = await context.find(
+        app.deps,
+        app.vault(user),
+        app.embedder,
+        q,
+        label.entities.time_refs,
+        trace,
+        app.settings.abstain_cosine,
+        verify=False,
+    )
     if res.status == "none" or not res.candidates:
         return Move("recall_none", "I don't have anything about that yet.", use_llm=False), []
     facts = [c.field_values["fact"] for c in res.candidates[:2]]
-    return Move("recall_answer", " ".join(facts[:1]), say_back=facts, max_words=60,
-                instruction="Answer in one or two sentences using only the say_back facts. "
-                            "Then, without a question or with one gentle one, return to today."), facts
+    return Move(
+        "recall_answer",
+        " ".join(facts[:1]),
+        say_back=facts,
+        max_words=60,
+        instruction="Answer in one or two sentences using only the say_back facts. "
+        "Then, without a question or with one gentle one, return to today.",
+    ), facts
 
 
 # ------------------------------------------------------------------ end
@@ -809,8 +1130,9 @@ async def end_session(app: App, user: User, sid: str, reason: str, now: datetime
             return state
         state.status = "ended"
         state.phase = "done"
-        state.end_reason = reason if reason in ("user", "time_limit", "idle", "budget", "error") \
-            else "user"
+        state.end_reason = (
+            reason if reason in ("user", "time_limit", "idle", "budget", "error") else "user"
+        )
         state.ended_at = _iso(now)
         try:
             _save(app, user, state, etag)
@@ -824,5 +1146,10 @@ async def end_session(app: App, user: User, sid: str, reason: str, now: datetime
 async def _finish(app: App, user: User, state: SessionState, now: datetime) -> None:
     if active_pointer(app, user) == state.id:
         _set_active(app, user, None)
-    app.dispatch("finalize_session", uid=user.uid, prefix=user.prefix,
-                 sandbox_id=user.sandbox_id, session_id=state.id)
+    app.dispatch(
+        "finalize_session",
+        uid=user.uid,
+        prefix=user.prefix,
+        sandbox_id=user.sandbox_id,
+        session_id=state.id,
+    )

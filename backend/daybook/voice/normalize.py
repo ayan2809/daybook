@@ -4,9 +4,28 @@ from __future__ import annotations
 
 import re
 
-_ONES = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
-         "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen",
-         "nineteen"]
+_ONES = [
+    "zero",
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "eleven",
+    "twelve",
+    "thirteen",
+    "fourteen",
+    "fifteen",
+    "sixteen",
+    "seventeen",
+    "eighteen",
+    "nineteen",
+]
 _TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"]
 
 
@@ -38,9 +57,12 @@ _UNITS = [
 
 def for_speech(text: str) -> str:
     t = text
-    t = re.sub(r"\bp(50|90|95|99|999)\b",
-               lambda m: "p " + (say_int(int(m.group(1))) if m.group(1) != "999"
-                                 else "nine nine nine"), t, flags=re.I)
+    t = re.sub(
+        r"\bp(50|90|95|99|999)\b",
+        lambda m: "p " + (say_int(int(m.group(1))) if m.group(1) != "999" else "nine nine nine"),
+        t,
+        flags=re.I,
+    )
     t = re.sub(r"₹\s?([\d,]+(?:\.\d+)?)", r"\1 rupees", t)
     t = re.sub(r"\$\s?([\d,]+(?:\.\d+)?)", r"\1 dollars", t)
     t = re.sub(r"(\d)\s?→\s?(\d)", r"\1 to \2", t)

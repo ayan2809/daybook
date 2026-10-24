@@ -33,9 +33,14 @@ class Span:
 
     def to_dict(self) -> dict:
         return {
-            "span_id": self.span_id, "parent_id": self.parent_id, "name": self.name,
-            "kind": self.kind, "start": self.start, "latency_ms": self.latency_ms,
-            "status": self.status, "attrs": self.attrs,
+            "span_id": self.span_id,
+            "parent_id": self.parent_id,
+            "name": self.name,
+            "kind": self.kind,
+            "start": self.start,
+            "latency_ms": self.latency_ms,
+            "status": self.status,
+            "attrs": self.attrs,
         }
 
 
@@ -65,16 +70,18 @@ class Trace:
 
     def record_llm(self, s: Span, resp: LLMResponse, prompt_version: str, **extra: Any) -> None:
         s.kind = "llm"
-        s.attrs.update({
-            "gen_ai.system": "gcp.gemini",
-            "gen_ai.request.model": resp.model,
-            "gen_ai.usage.input_tokens": resp.tokens_in,
-            "gen_ai.usage.output_tokens": resp.tokens_out,
-            "gen_ai.response.finish_reasons": [resp.finish_reason],
-            "daybook.prompt_version": prompt_version,
-            "daybook.cost_usd": round(resp.cost_usd, 6),
-            **extra,
-        })
+        s.attrs.update(
+            {
+                "gen_ai.system": "gcp.gemini",
+                "gen_ai.request.model": resp.model,
+                "gen_ai.usage.input_tokens": resp.tokens_in,
+                "gen_ai.usage.output_tokens": resp.tokens_out,
+                "gen_ai.response.finish_reasons": [resp.finish_reason],
+                "daybook.prompt_version": prompt_version,
+                "daybook.cost_usd": round(resp.cost_usd, 6),
+                **extra,
+            }
+        )
         self.add_cost(resp.cost_usd, resp.tokens_in, resp.tokens_out)
 
     def add_cost(self, cost: float, tokens_in: int = 0, tokens_out: int = 0) -> None:

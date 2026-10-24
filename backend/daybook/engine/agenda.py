@@ -8,6 +8,7 @@ Every Move carries a safe `template`: the guard fallback, and what the fake LLM 
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -51,8 +52,10 @@ class Move:
     use_llm: bool = True  # False: say the template verbatim (safety, repeat, fixed confirmations)
 
     def note(self, state: SessionState, now: datetime) -> str:
-        lines = [f"move: {self.name}      phase: {state.phase}      "
-                 f"seconds_left: {state.seconds_left(now)}"]
+        lines = [
+            f"move: {self.name}      phase: {state.phase}      "
+            f"seconds_left: {state.seconds_left(now)}"
+        ]
         if self.ack:
             lines.append(f"first: {self.ack}")
         if self.about:
@@ -64,8 +67,10 @@ class Move:
         if self.say_back:
             lines.append("say_back_exactly: " + json.dumps(self.say_back, ensure_ascii=False))
         if self.promised:
-            lines.append("open_questions_for_tomorrow (name each): "
-                         + json.dumps(self.promised, ensure_ascii=False))
+            lines.append(
+                "open_questions_for_tomorrow (name each): "
+                + json.dumps(self.promised, ensure_ascii=False)
+            )
         if self.instruction:
             lines.append(f"instruction: {self.instruction}")
         lines.append(f'example (an acceptable reply; say it your own way): "{self.template}"')
@@ -88,6 +93,22 @@ def _lower_first(s: str) -> str:
     return s[:1].lower() + s[1:] if s else s
 
 
+_LEADING_VERB = re.compile(
+    r"^(?:\w+ed|built|wrote|led|ran|made|did|got|set up|cut|spent|began|drove|took|gave|"
+    r"found|kept|met|sent|won|taught|brought|held|helped|helping)\s+",
+    re.I,
+)
+
+
+def noun_phrase(title: str) -> str:
+    """'Shipped webhook retry worker' → 'the webhook retry worker' (for spoken promises)."""
+    rest = _LEADING_VERB.sub("", title.strip().rstrip("."), count=1)
+    if rest == title.strip().rstrip("."):
+        return _lower_first(rest)
+    rest = re.sub(r"^(the|a|an|my|our)\s+", "", rest, flags=re.I)
+    return f"the {_lower_first(rest)}"
+
+
 def _count_word(n: int) -> str:
     return {1: "one", 2: "two", 3: "three"}.get(n, str(n))
 
@@ -95,8 +116,11 @@ def _count_word(n: int) -> str:
 def opener(state: SessionState, name: str | None, plan_text: str | None) -> Move:
     hi = f"Hi {name}." if name else "Hi."
     if state.mode == "dump":
-        return Move("open_dump", f"{hi} Go ahead and tell me everything about today, in one go. "
-                    "I'm listening.", instruction="Invite a brain dump. No question about details.")
+        return Move(
+            "open_dump",
+            f"{hi} Go ahead and tell me everything about today, in one go. I'm listening.",
+            instruction="Invite a brain dump. No question about details.",
+        )
     if state.mode == "quick":
         return Move("open_quick", f"{hi} What's the one thing you got done today?")
     if state.pending_queue:
@@ -107,24 +131,37 @@ def opener(state: SessionState, name: str | None, plan_text: str | None) -> Move
             "open_pending",
             f"{hi} Before we start, {_count_word(n)} quick {ones} from last time. {first.question}",
             instruction="Greet briefly, say you have a few quick questions from last time, then ask "
-                        "the first one exactly as given.",
-            say_back=[first.question], pending_id=first.id, max_words=55,
+            "the first one exactly as given.",
+            say_back=[first.question],
+            pending_id=first.id,
+            max_words=55,
         )
     if plan_text:
         return Move(
-            "open_plan", f"{hi} Last time you planned to {_lower_first(plan_text)}. How did it go?",
+            "open_plan",
+            f"{hi} Last time you planned to {_lower_first(plan_text)}. How did it go?",
             instruction="Greet briefly and ask how yesterday's plan went.",
             say_back=[plan_text],
         )
-    return Move("open", f"{hi} How did today go? What stood out?",
-                instruction="Greet briefly; ask for one word on energy or what stood out today.")
+    return Move(
+        "open",
+        f"{hi} How did today go? Tell me what stood out.",
+        instruction="Greet briefly; ask for one word on energy or what stood out today.",
+    )
 
 
 def ask_pending(p: PendingAsk, ack: str | None = None, ack_template: str = "") -> Move:
     t = f"{ack_template} {p.question}".strip()
-    return Move("ask_pending", t, ack=ack, say_back=[p.question], pending_id=p.id,
-                about=p.item_title, instruction="Ask this open question from last time, as given.",
-                max_words=55)
+    return Move(
+        "ask_pending",
+        t,
+        ack=ack,
+        say_back=[p.question],
+        pending_id=p.id,
+        about=p.item_title,
+        instruction="Ask this open question from last time, as given.",
+        max_words=55,
+    )
 
 
 def _sorted_gaps(state: SessionState, numbers_first: bool = False) -> list[dict]:
@@ -143,21 +180,32 @@ def ask_gap(state: SessionState, g: dict, ack: str | None = None, ack_template: 
         gap = "outcome"
     hint = (g.get("ask_hint") or "").strip()
     q = hint if hint.endswith("?") and len(hint.split()) <= 25 else GAP_TEMPLATES[gap]
-    instr = ("Mirror their words briefly, then ask about the missing piece. ")
+    instr = "Mirror their words briefly, then ask about the missing piece. "
     if item.get("kind") in SOFT_KINDS:
         instr += "This is people work: ask who it helped or what changed, never 'by how much'. "
     if gap == "metric":
         instr += "Say a rough number is fine, and that not knowing is fine too."
-    return Move("ask_gap", f"{ack_template} {q}".strip(), instruction=instr,
-                about=_lower_first(item["title"]), target=g["temp_id"], gap=gap, ask_hint=hint or None,
-                ack=ack)
+    return Move(
+        "ask_gap",
+        f"{ack_template} {q}".strip(),
+        instruction=instr,
+        about=_lower_first(item["title"]),
+        target=g["temp_id"],
+        gap=gap,
+        ask_hint=hint or None,
+        ack=ack,
+    )
 
 
-def ask_open(state: SessionState, key: str, text: str, ack: str | None = None,
-             ack_template: str = "Got it.") -> Move:
-    return Move(f"ask_{key}" if key != "what_else" else "ask_open",
-                f"{ack_template} {text}".strip(), ack=ack,
-                instruction="Mirror what they just said in a few words, then ask this open question.")
+def ask_open(
+    state: SessionState, key: str, text: str, ack: str | None = None, ack_template: str = "Got it."
+) -> Move:
+    return Move(
+        f"ask_{key}" if key != "what_else" else "ask_open",
+        f"{ack_template} {text}".strip(),
+        ack=ack,
+        instruction="Mirror what they just said in a few words, then ask this open question.",
+    )
 
 
 def wrap(state: SessionState) -> Move:
@@ -169,16 +217,31 @@ def wrap(state: SessionState) -> Move:
     promised = []
     seen = set()
     for g in sorted(state.gaps, key=lambda g: g.get("priority", 2)):
-        if g.get("priority", 2) > 2 or g["temp_id"] not in state.board_items or g["temp_id"] in seen:
+        if (
+            g.get("priority", 2) > 2
+            or g["temp_id"] not in state.board_items
+            or g["temp_id"] in seen
+        ):
             continue
         item = state.board_items[g["temp_id"]]
         gap = "outcome" if item.get("kind") in SOFT_KINDS and g["gap"] == "metric" else g["gap"]
-        topic = {"metric": "the numbers for", "outcome": "what changed after",
-                 "ownership": "your part in", "how": "how you did",
-                 "why_it_mattered": "why it mattered:"}.get(gap, "")
-        promised.append({"temp_id": g["temp_id"], "gap": gap, "title": item["title"],
-                         "about": f"{topic} {_lower_first(item['title'])}".strip(),
-                         "ask_hint": g.get("ask_hint")})
+        thing = noun_phrase(item["title"])
+        topic = {
+            "metric": f"the numbers for {thing}",
+            "outcome": f"what changed after {thing}",
+            "ownership": f"your part in {thing}",
+            "how": f"how {thing} came together",
+            "why_it_mattered": f"why {thing} mattered",
+        }.get(gap, thing)
+        promised.append(
+            {
+                "temp_id": g["temp_id"],
+                "gap": gap,
+                "title": item["title"],
+                "about": topic,
+                "ask_hint": g.get("ask_hint"),
+            }
+        )
         seen.add(g["temp_id"])
         if len(promised) == 3:
             break
@@ -189,10 +252,14 @@ def wrap(state: SessionState) -> Move:
         t += f" Tomorrow I'll ask you about {_join([p['about'] for p in promised])}."
     t += " Did I miss anything?"
     return Move(
-        "wrap", t, wrap=True, max_words=80, say_back=titles,
+        "wrap",
+        t,
+        wrap=True,
+        max_words=80,
+        say_back=titles,
         promised=[p["about"] for p in promised],
         instruction="Briefly read back what you captured (the say_back items), name each open "
-                    "question for tomorrow, then ask if you missed anything.",
+        "question for tomorrow, then ask if you missed anything.",
     )
 
 
@@ -207,8 +274,13 @@ def goodbye(state: SessionState, reason: str = "user", added: bool = False) -> M
         t = "Got it, I've added that. Thanks, everything's saved. Have a good evening."
     else:
         t = "Thanks, that's saved. Have a good evening."
-    return Move("goodbye", t, end=True, use_llm=reason not in ("stop",),
-                instruction="Say a short, warm goodbye. No question.")
+    return Move(
+        "goodbye",
+        t,
+        end=True,
+        use_llm=reason not in ("stop",),
+        instruction="Say a short, warm goodbye. No question.",
+    )
 
 
 def _join(xs: list[str]) -> str:
@@ -218,8 +290,9 @@ def _join(xs: list[str]) -> str:
     return ", ".join(xs[:-1]) + " and " + xs[-1]
 
 
-def next_move(state: SessionState, now: datetime, ack: str | None = None,
-              ack_template: str = "") -> Move:
+def next_move(
+    state: SessionState, now: datetime, ack: str | None = None, ack_template: str = ""
+) -> Move:
     """Rules 6–7: the phase's move, else the top gap, else an open prompt, else wrap."""
     if state.mode == "quick":
         return goodbye(state)
@@ -265,7 +338,11 @@ def decide(state: SessionState, label: TurnLabel, now: datetime) -> Step:
                 return Step("deny")
             if pa.kind == "confirm_metric" and intent in ("metric_answer", "reflect"):
                 return Step("pending_answer")  # they restated the number
-            if pa.kind == "confirm_item" and intent in ("reflect", "edit_request", "recall_request"):
+            if pa.kind == "confirm_item" and intent in (
+                "reflect",
+                "edit_request",
+                "recall_request",
+            ):
                 return Step("pick")  # "no, the other one" style answers
         elif pa.kind == "pick_item":
             return Step("deny") if intent == "deny" else Step("pick")
@@ -278,20 +355,27 @@ def decide(state: SessionState, label: TurnLabel, now: datetime) -> Step:
     if intent == "crisis_signal":
         return Step("safety")
     if intent == "support_request":
-        return Step("move", Move(
-            "support",
-            "That sounds like a heavy day. When you want it, the Remind me page shows hard things "
-            "you've gotten through. What's on your mind?",
-            instruction="Acknowledge the feeling first, warmly. Offer the Remind me page. Never "
-                        "diagnose or give advice. Not therapy.",
-            max_words=50,
-        ))
+        return Step(
+            "move",
+            Move(
+                "support",
+                "That sounds like a heavy day. When you want it, the Remind me page shows hard things "
+                "you've gotten through. What's on your mind?",
+                instruction="Acknowledge the feeling first, warmly. Offer the Remind me page. Never "
+                "diagnose or give advice. Not therapy.",
+                max_words=50,
+            ),
+        )
     if intent == "vent":
-        return Step("move", Move(
-            "reflect_vent", "That sounds really draining.",
-            instruction="Reflect their feeling back in their words. No advice. At most one gentle "
-                        "question, or none.",
-        ))
+        return Step(
+            "move",
+            Move(
+                "reflect_vent",
+                "That sounds really draining.",
+                instruction="Reflect their feeling back in their words. No advice. At most one gentle "
+                "question, or none.",
+            ),
+        )
 
     # 3. meta commands
     if meta == "stop":
@@ -305,11 +389,15 @@ def decide(state: SessionState, label: TurnLabel, now: datetime) -> Step:
         return Step("move", Move("repeat", last, use_llm=False, max_words=90))
     if meta == "time_left":
         mins = max(1, round(state.seconds_left(now) / 60))
-        return Step("move", Move("time_left", f"About {mins} minute{'s' if mins > 1 else ''} left.",
-                                 use_llm=False))
+        return Step(
+            "move",
+            Move("time_left", f"About {mins} minute{'s' if mins > 1 else ''} left.", use_llm=False),
+        )
     if meta == "pause":
-        return Step("move", Move("pause", "Sure, take your time. I'm here when you're ready.",
-                                 use_llm=False))
+        return Step(
+            "move",
+            Move("pause", "Sure, take your time. I'm here when you're ready.", use_llm=False),
+        )
     if meta == "skip":
         last_target = state.flags.get("last_target")
         if last_target:
@@ -330,10 +418,14 @@ def decide(state: SessionState, label: TurnLabel, now: datetime) -> Step:
         return Step("pending_answer")
 
     if intent == "off_topic" or label.injection_suspected:
-        return Step("move", Move(
-            "steer_back", "I'm here for your reflection. What else happened at work today?",
-            instruction="Kindly say you're here for their reflection, and steer back to their day.",
-        ))
+        return Step(
+            "move",
+            Move(
+                "steer_back",
+                "I'm here for your reflection. What else happened at work today?",
+                instruction="Kindly say you're here for their reflection, and steer back to their day.",
+            ),
+        )
 
     # 6–7. phase move, gaps, open prompts
     if state.phase == "wrap":

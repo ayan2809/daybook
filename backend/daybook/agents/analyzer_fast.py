@@ -23,16 +23,31 @@ async def fast_pass(
     )
     contents = history([t for t in turns if not t.get("safety")], limit=8)
     delta, _ = await structured(
-        deps, trace, "analyzer.fast", deps.settings.model_fast, system, version, contents, DraftDelta
+        deps,
+        trace,
+        "analyzer.fast",
+        deps.settings.model_fast,
+        system,
+        version,
+        contents,
+        DraftDelta,
     )
     return delta
 
 
-async def propose_edit(deps: Deps, trace: Trace, record: dict, request_text: str) -> EditPatch | None:
+async def propose_edit(
+    deps: Deps, trace: Trace, record: dict, request_text: str
+) -> EditPatch | None:
     system, version = render("edit_patch", record=json.dumps(record, ensure_ascii=False))
     patch, _ = await structured(
-        deps, trace, "analyzer.edit_patch", deps.settings.model_fast, system, version,
-        [user_text(request_text)], EditPatch,
+        deps,
+        trace,
+        "analyzer.edit_patch",
+        deps.settings.model_fast,
+        system,
+        version,
+        [user_text(request_text)],
+        EditPatch,
     )
     return patch
 
@@ -44,7 +59,13 @@ async def parse_pending_answer(
         "pending_answer", question=question, item=json.dumps(item or {}, ensure_ascii=False)
     )
     ans, _ = await structured(
-        deps, trace, "analyzer.pending_answer", deps.settings.model_fast, system, version,
-        [user_text(text)], PendingAnswer,
+        deps,
+        trace,
+        "analyzer.pending_answer",
+        deps.settings.model_fast,
+        system,
+        version,
+        [user_text(text)],
+        PendingAnswer,
     )
     return ans

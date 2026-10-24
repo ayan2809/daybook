@@ -30,18 +30,26 @@ async def label_turn(
         tz=tz,
         projects=json.dumps(
             [{"id": p["id"], "name": p["name"], "aliases": p.get("aliases", [])} for p in projects]
-        ) or "[]",
+        )
+        or "[]",
         pending=json.dumps(pending) if pending else "none",
         last_agent=json.dumps(last_agent) if last_agent else "nothing yet",
         awaiting=awaiting or "nothing",
     )
     label, _ = await structured(
-        deps, trace, "researcher", deps.settings.model_router, system, version,
-        [user_text(text)], TurnLabel,
+        deps,
+        trace,
+        "researcher",
+        deps.settings.model_router,
+        system,
+        version,
+        [user_text(text)],
+        TurnLabel,
     )
     if label is None:
         label = TurnLabel(confidence=0.0)
     for s in trace.spans[-1:]:
-        s.attrs.update({"daybook.intent": label.primary_intent,
-                        "daybook.confidence": label.confidence})
+        s.attrs.update(
+            {"daybook.intent": label.primary_intent, "daybook.confidence": label.confidence}
+        )
     return label
