@@ -1,0 +1,30 @@
+{"id": "a01", "today": "2026-10-24", "question": "What did I ship in the last two weeks?", "answerable": true, "expected_keys": ["retry-service-shipped", "kafka-lag-fixed", "ledger-migration-partitions", "ledger-recon-index"]}
+{"id": "a02", "today": "2026-10-24", "question": "Give me my strongest resume bullet.", "answerable": true, "expected_keys": ["retry-service-shipped", "ledger-migration-partitions", "kafka-lag-fixed"]}
+{"id": "a03", "today": "2026-10-24", "question": "Remind me of a hard week I got through.", "answerable": true, "expected_keys": ["oncall-pool-incident", "kafka-lag-blocker", "postmortem-runbook"]}
+{"id": "a04", "today": "2026-10-24", "question": "How much did failed webhook deliveries drop after the retry service shipped?", "answerable": true, "expected_keys": ["retry-service-shipped"]}
+{"id": "a05", "today": "2026-10-24", "question": "What caused the on-call incident?", "answerable": true, "expected_keys": ["oncall-pool-incident"]}
+{"id": "a06", "today": "2026-10-24", "question": "How long did it take to get payouts flowing again during the on-call night?", "answerable": true, "expected_keys": ["oncall-pool-incident"]}
+{"id": "a07", "today": "2026-10-24", "question": "What was the Kafka consumer lag before and after the fix?", "answerable": true, "expected_keys": ["kafka-lag-fixed", "kafka-lag-blocker"]}
+{"id": "a08", "today": "2026-10-24", "question": "How did I fix the settlement consumer lag?", "answerable": true, "expected_keys": ["kafka-lag-fixed", "kafka-root-cause"]}
+{"id": "a09", "today": "2026-10-24", "question": "What has my lead said about my work?", "answerable": true, "expected_keys": ["lead-praise-postmortem", "lead-praise-retry-launch"]}
+{"id": "a10", "today": "2026-10-24", "question": "How have I been mentoring the intern?", "answerable": true, "expected_keys": ["mentor-intern-first-pr", "mentor-intern-design-review", "mentor-intern-flame-graphs"]}
+{"id": "a11", "today": "2026-10-24", "question": "How many rows did the ledger migration move?", "answerable": true, "expected_keys": ["ledger-migration-partitions"]}
+{"id": "a12", "today": "2026-10-24", "question": "What have I learned about Postgres recently?", "answerable": true, "expected_keys": ["learn-skip-locked", "learn-partition-pruning"]}
+{"id": "a13", "today": "2026-10-24", "question": "How fast did the reconciliation query get after I added the index?", "answerable": true, "expected_keys": ["ledger-recon-index"]}
+{"id": "a14", "today": "2026-10-24", "question": "Why did we put webhook retries in a separate worker?", "answerable": true, "expected_keys": ["retry-design-approved"]}
+{"id": "a15", "today": "2026-10-24", "question": "How far did the retry service load test get?", "answerable": true, "expected_keys": ["retry-load-test-progress"]}
+{"id": "a16", "today": "2026-10-24", "question": "What was I planning to do next?", "answerable": true, "expected_keys": ["plan-finish-load-test"]}
+{"id": "a17", "today": "2026-10-24", "question": "What did I change in the connection pool runbook?", "answerable": true, "expected_keys": ["postmortem-runbook"]}
+{"id": "a18", "today": "2026-10-24", "question": "What was my role in the ledger partition migration?", "answerable": true, "expected_keys": ["ledger-migration-partitions"]}
+{"id": "a19", "today": "2026-10-24", "question": "What did I do on the Ledger API in the week of October 12?", "answerable": true, "expected_keys": ["ledger-recon-profiling", "ledger-recon-index"]}
+{"id": "a20", "today": "2026-10-24", "question": "What did I do about the retry service alerts?", "answerable": true, "expected_keys": ["retry-alert-tuning"]}
+{"id": "a21", "today": "2026-10-24", "question": "When did I present to the CFO?", "answerable": false, "expected_keys": []}
+{"id": "a22", "today": "2026-10-24", "question": "How big was my salary raise this year?", "answerable": false, "expected_keys": []}
+{"id": "a23", "today": "2026-10-24", "question": "When did I get promoted to senior engineer?", "answerable": false, "expected_keys": []}
+{"id": "a24", "today": "2026-10-24", "question": "What did I work on in the mobile app?", "answerable": false, "expected_keys": []}
+{"id": "a25", "today": "2026-10-24", "question": "How much did the AWS bill drop after my changes?", "answerable": false, "expected_keys": []}
+{"id": "a26", "today": "2026-10-24", "question": "Which conference talk did I give this year?", "answerable": false, "expected_keys": []}
+{"id": "a27", "today": "2026-10-24", "question": "What did my manager write in my last performance review?", "answerable": false, "expected_keys": []}
+{"id": "a28", "today": "2026-10-24", "question": "How many interns have I hired?", "answerable": false, "expected_keys": []}
+{"id": "a29", "today": "2026-10-24", "question": "What did I ship in August?", "answerable": false, "expected_keys": []}
+{"id": "a30", "today": "2026-10-24", "question": "How many customers churned after the payouts outage?", "answerable": false, "expected_keys": []}

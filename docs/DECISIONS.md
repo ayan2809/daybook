@@ -1,0 +1,20 @@
+# Decision log
+
+Append-only. Each entry: id, date, decision, why, and what it affects. Decisions marked **(locked)** in
+`plan.md` aren't repeated here unless something changed. Plan-level decision numbers (D-12 etc.) refer to
+Lore's log.
+
+| ID | Date | Decision | Why | Affects |
+|---|---|---|---|---|
+| DB-01 | 2026-10-24 | Work happens on branch `feature/initial-implementation`, remote `origin = github.com/ayan2809/daybook`. Code pushes go to feature branches only; nothing is deployed to AWS until Ayan says so. | Ayan's instruction. | git, infra |
+| DB-02 | 2026-10-24 | Local secrets: `GEMINI_API_KEY` and `GEMINI_TTS_API_KEY` copied from Lore's `.env` (`LORE_GEMINI_API_KEY`, `TTS_GEMINI_KEY`) into the git-ignored root `.env`. | Ayan's instruction ("retrieve from the reference repo"). | settings |
+| DB-03 | 2026-10-24 | **Voice fallback: Gemini TTS** (`gemini-3.8-flash-lite-tts`, voice `Sulafat`, "warm") until the ElevenLabs key arrives. Selected with `DAYBOOK_TTS=gemini`. ElevenLabs stays the planned default (`DAYBOOK_TTS=elevenlabs`) and is implemented against its docs but untested. | ElevenLabs key unavailable until tomorrow; Ayan said use Gemini as the alternative. Spike: ~3 s for a 60-char line, returns `audio/wav` (24 kHz mono 16-bit) that browsers play directly. | voice/tts.py, settings |
+| DB-04 | 2026-10-24 | Thinking level: `minimal` for Flash-Lite per-turn calls (Researcher, fast pass, Chat, Context verifier, session judge); `low` for `gemini-3.8-flash` (deep pass, Ask). Set through `types.ThinkingConfig(thinking_level=...)` on `generate_content`. | Docs: `minimal` is the lowest level for 3.5 Flash-Lite, `low` for 3.8 Flash (thinking can't be turned off). Spike S5 (text): Flash-Lite structured call p50 ≈ 1.2–1.3 s, max ≈ 2 s. | llm/gemini.py |
+| DB-05 | 2026-10-24 | Python 3.12 via `uv` (`backend/.venv`); deps declared in `backend/pyproject.toml`, locked by `uv.lock`. `requirements.lock` for the Lambda zip is generated from it at deploy time (`uv export`). | Matches Lambda python3.12; system Python is 3.13. | backend |
+| DB-06 | 2026-10-24 | `docs_vec` (sqlite-vec) is created by `memory/db.py` only when the extension loads, not in `schema.sql`; otherwise retrieval uses numpy brute force over `docs.embedding`. | `schema.sql` must apply on any SQLite (tests, fallbacks). | memory/db.py, schema.sql |
+| DB-07 | 2026-10-24 | Fake mode uses a **heuristic fake LLM** (`llm/fakes.py: HeuristicFakeLLM`) that answers each response schema with rule-based output (keyword intents, sentence-level items, template chat lines). The scripted `FakeLLM` from Lore stays for unit tests. | `make dev` must run the whole flow offline with no keys (test C1). | llm/fakes.py |
+| DB-08 | 2026-10-24 | Fake TTS returns a short silent **WAV** (not MP3). | WAV can be generated in pure Python; MP3 would need an encoder. | voice/tts.py |
+| DB-09 | 2026-10-24 | Locally, async worker jobs (finalize, judge) run in-process as asyncio tasks through one `dispatch_job()` function; in Lambda the same function does an async `lambda.invoke`. | Same code path for job logic; no extra process locally. | worker.py, engine |
+| DB-10 | 2026-10-24 | Pending-question resolutions (confirmed number, defer, not-quantifiable, dismiss) and voice edits are written to the vault **on the turn the user confirms**, by code. `times_asked` increments and expiry are applied at finalize. The deep pass only rewrites bullets for items touched this session. | Plan 6.2: every in-conversation write happens on the user's explicit yes; keeping writes on confirm makes them durable even if finalize fails. | engine/conductor.py, engine/finalize.py |
+| DB-11 | 2026-10-24 | `POST /api/sessions/{id}/end` is exempt from the `X-Requested-With` header check. | `navigator.sendBeacon` (used on `pagehide`) can't set custom headers. The cookie is `SameSite=Strict`, so cross-site requests carry no session anyway. | api/sessions.py |
+| DB-12 | 2026-10-24 | No `Co-Authored-By` trailer on commits. | Ayan's standing rule in `plan.md` §16 (it overrides the tool default). | git |

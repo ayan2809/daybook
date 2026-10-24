@@ -1,0 +1,30 @@
+{"id": "q01", "today": "2026-10-24", "kind": "edit", "query": "Actually, that migration last Tuesday was 40% faster, not 50.", "expected_keys": ["ledger-migration-partitions"]}
+{"id": "q02", "today": "2026-10-24", "kind": "edit", "query": "Change the reconciliation speedup from the partition migration to 40 percent.", "expected_keys": ["ledger-migration-partitions"]}
+{"id": "q03", "today": "2026-10-24", "kind": "edit", "query": "The retry service failures went down to under 80 a day, not 100.", "expected_keys": ["retry-service-shipped"]}
+{"id": "q04", "today": "2026-10-24", "kind": "edit", "query": "The on-call recovery took 35 minutes, not 40.", "expected_keys": ["oncall-pool-incident"]}
+{"id": "q05", "today": "2026-10-24", "kind": "edit", "query": "The Kafka lag before the fix was more like 2.5 million messages.", "expected_keys": ["kafka-lag-fixed", "kafka-lag-blocker"]}
+{"id": "q06", "today": "2026-10-24", "kind": "edit", "query": "Fix the index one, the reconciliation query was 950 ms before, not 900.", "expected_keys": ["ledger-recon-index"]}
+{"id": "q07", "today": "2026-10-24", "kind": "edit", "query": "Yesterday's load test actually went up to 350 requests per second.", "expected_keys": ["retry-load-test-progress"]}
+{"id": "q08", "today": "2026-10-24", "kind": "edit", "query": "I led the retry service design doc, I didn't just write part of it.", "expected_keys": ["retry-design-approved"]}
+{"id": "q09", "today": "2026-10-24", "kind": "edit", "query": "Mark the Grafana dashboard thing as something the team did.", "expected_keys": ["helped-grafana-dashboard"]}
+{"id": "q10", "today": "2026-10-24", "kind": "edit", "query": "The pairing with the intern on their first PR was two hours, not one.", "expected_keys": ["mentor-intern-first-pr"]}
+{"id": "q11", "today": "2026-10-24", "kind": "edit", "query": "For yesterday's alert tuning, alerts went from 40 a week to 6.", "expected_keys": ["retry-alert-tuning"]}
+{"id": "q12", "today": "2026-10-24", "kind": "edit", "query": "The ledger migration moved 19 million rows, not 18.", "expected_keys": ["ledger-migration-partitions"]}
+{"id": "q13", "today": "2026-10-24", "kind": "edit", "query": "On Wednesday's retry launch, I didn't lead it, change it to did.", "expected_keys": ["retry-service-shipped"]}
+{"id": "q14", "today": "2026-10-24", "kind": "edit", "query": "On the profiling day the nightly run took about 55 minutes, not 50.", "expected_keys": ["ledger-recon-profiling"]}
+{"id": "q15", "today": "2026-10-24", "kind": "edit", "query": "My lead shared the postmortem in the team channel, not the engineering channel.", "expected_keys": ["lead-praise-postmortem"]}
+{"id": "q16", "today": "2026-10-24", "kind": "recall", "query": "What did I do on the ledger API last week?", "expected_keys": ["ledger-migration-partitions", "ledger-idempotency-review"]}
+{"id": "q17", "today": "2026-10-24", "kind": "recall", "query": "The night I got paged at 2 am", "expected_keys": ["oncall-pool-incident"]}
+{"id": "q18", "today": "2026-10-24", "kind": "recall", "query": "When was I blocked on Kafka?", "expected_keys": ["kafka-lag-blocker"]}
+{"id": "q19", "today": "2026-10-24", "kind": "recall", "query": "Teaching the intern flame graphs", "expected_keys": ["mentor-intern-flame-graphs"]}
+{"id": "q20", "today": "2026-10-24", "kind": "recall", "query": "What did I learn about SKIP LOCKED?", "expected_keys": ["learn-skip-locked"]}
+{"id": "q21", "today": "2026-10-24", "kind": "recall", "query": "How did the retry service rollout go?", "expected_keys": ["retry-service-shipped"]}
+{"id": "q22", "today": "2026-10-24", "kind": "recall", "query": "What did my lead say about the retry launch?", "expected_keys": ["lead-praise-retry-launch"]}
+{"id": "q23", "today": "2026-10-24", "kind": "recall", "query": "The postmortem and the connection pool runbook", "expected_keys": ["postmortem-runbook"]}
+{"id": "q24", "today": "2026-10-24", "kind": "recall", "query": "Postgres partition pruning", "expected_keys": ["learn-partition-pruning"]}
+{"id": "q25", "today": "2026-10-24", "kind": "recall", "query": "The composite index on journal entries", "expected_keys": ["ledger-recon-index"]}
+{"id": "q26", "today": "2026-10-24", "kind": "recall", "query": "Why did we choose a separate worker with a dead-letter queue?", "expected_keys": ["retry-design-approved"]}
+{"id": "q27", "today": "2026-10-24", "kind": "recall", "query": "Merchants whose endpoints time out after two seconds", "expected_keys": ["retry-per-merchant-timeout"]}
+{"id": "q28", "today": "2026-10-24", "kind": "recall", "query": "The intern's CSV export design review", "expected_keys": ["mentor-intern-design-review"]}
+{"id": "q29", "today": "2026-10-24", "kind": "recall", "query": "Where am I with the retry service load test?", "expected_keys": ["retry-load-test-progress", "plan-finish-load-test"]}
+{"id": "q30", "today": "2026-10-24", "kind": "recall", "query": "The max poll interval rebalancing root cause", "expected_keys": ["kafka-root-cause"]}

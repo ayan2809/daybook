@@ -1,0 +1,18 @@
+# USD prices used by the spend counter and traces (plan 19). Estimates from token counts.
+# Gemini: ai.google.dev/gemini-api/docs/pricing, checked 2026-10-24.
+# ElevenLabs: elevenlabs.io API pricing, checked 2026-10-24.
+checked: 2026-10-24
+llm_per_mtok:            # [input, output]; output includes thinking tokens
+  gemini-3.5-flash-lite: [0.30, 2.50]
+  gemini-3.1-flash-lite: [0.25, 1.50]
+  gemini-3.8-flash: [0.75, 3.75]   # doubles on 2027-01-01
+  gemini-4-argon: [2.00, 10.00]
+embed_per_mtok:
+  gemini-embedding-2: 0.20
+tts:
+  # ElevenLabs bills per character
+  eleven_flash_v2_5: {per_kchar: 0.04}
+  # Gemini TTS bills per token: text in, audio out (~25 audio tokens per second).
+  # Price NOT verified yet: see docs/REVIEW_QUEUE.md RQ-03. Conservative placeholder.
+  gemini-3.8-flash-lite-tts: {in_per_mtok: 0.50, out_per_mtok: 10.00, audio_tokens_per_sec: 25}
+default_llm: [0.75, 3.75]
