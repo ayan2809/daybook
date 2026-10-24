@@ -1,0 +1,141 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DeployStacks",
+      "Effect": "Allow",
+      "Action": "cloudformation:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DaybookFunctions",
+      "Effect": "Allow",
+      "Action": "lambda:*",
+      "Resource": [
+        "arn:aws:lambda:*:355426657170:function:daybook-*",
+        "arn:aws:lambda:*:355426657170:function:daybook-*:*"
+      ]
+    },
+    {
+      "Sid": "LambdaAccountReads",
+      "Effect": "Allow",
+      "Action": ["lambda:GetAccountSettings", "lambda:ListFunctions"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DaybookBuckets",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": ["arn:aws:s3:::daybook-*", "arn:aws:s3:::daybook-*/*"]
+    },
+    {
+      "Sid": "ListBuckets",
+      "Effect": "Allow",
+      "Action": ["s3:ListAllMyBuckets", "s3:GetBucketLocation"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudFront",
+      "Effect": "Allow",
+      "Action": "cloudfront:*",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DaybookScheduleRules",
+      "Effect": "Allow",
+      "Action": "events:*",
+      "Resource": "arn:aws:events:*:355426657170:rule/daybook-*"
+    },
+    {
+      "Sid": "EventsReads",
+      "Effect": "Allow",
+      "Action": ["events:ListRules", "events:ListRuleNamesByTarget"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DaybookLogs",
+      "Effect": "Allow",
+      "Action": "logs:*",
+      "Resource": [
+        "arn:aws:logs:*:355426657170:log-group:/aws/lambda/daybook-*",
+        "arn:aws:logs:*:355426657170:log-group:/aws/lambda/daybook-*:*"
+      ]
+    },
+    {
+      "Sid": "LogsReads",
+      "Effect": "Allow",
+      "Action": "logs:DescribeLogGroups",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DaybookParameters",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:PutParameter",
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:GetParametersByPath",
+        "ssm:GetParameterHistory",
+        "ssm:DeleteParameter",
+        "ssm:DeleteParameters",
+        "ssm:AddTagsToResource",
+        "ssm:RemoveTagsFromResource",
+        "ssm:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:ssm:*:355426657170:parameter/daybook/*"
+    },
+    {
+      "Sid": "ParameterList",
+      "Effect": "Allow",
+      "Action": "ssm:DescribeParameters",
+      "Resource": "*"
+    },
+    {
+      "Sid": "SecureStringKeyViaSsm",
+      "Effect": "Allow",
+      "Action": ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey", "kms:DescribeKey"],
+      "Resource": "*",
+      "Condition": {
+        "StringLike": { "kms:ViaService": "ssm.*.amazonaws.com" }
+      }
+    },
+    {
+      "Sid": "DaybookRolesOnly",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:UpdateRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:ListRoleTags",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListAttachedRolePolicies",
+        "iam:ListInstanceProfilesForRole"
+      ],
+      "Resource": "arn:aws:iam::355426657170:role/daybook-*"
+    },
+    {
+      "Sid": "PassDaybookRolesToLambda",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::355426657170:role/daybook-*",
+      "Condition": {
+        "StringEquals": { "iam:PassedToService": "lambda.amazonaws.com" }
+      }
+    },
+    {
+      "Sid": "WhoAmI",
+      "Effect": "Allow",
+      "Action": "sts:GetCallerIdentity",
+      "Resource": "*"
+    }
+  ]
+}
