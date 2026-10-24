@@ -410,7 +410,7 @@ def _write(conn, state: SessionState, plan: dict) -> dict:
             ).fetchone()
         ):
             cur = repo.get_item(conn, existing)
-            have = {m["source_text"] for m in cur["metrics"]}
+            have = [metric_key(m) for m in cur["metrics"]]
             changes = {
                 k: f[k]
                 for k in (
@@ -436,7 +436,9 @@ def _write(conn, state: SessionState, plan: dict) -> dict:
             if (
                 cur["status"] == "draft"
                 and not cur["validation_note"]
-                and not any(q["kind"] in ("metric", "outcome") for q in cur["open_pending"])
+                and not any(
+                    q["kind"] in ("metric", "outcome", "ownership") for q in cur["open_pending"]
+                )
             ):
                 changes["status"] = "active"
             repo.update_item(
@@ -445,7 +447,7 @@ def _write(conn, state: SessionState, plan: dict) -> dict:
                 changes,
                 "analyzer",
                 f"session {sid}",
-                add_metrics=[m for m in it["metrics"] if m["source_text"] not in have],
+                add_metrics=_new_metrics(it["metrics"], have),
             )
             ref_to_id[it["ref"]] = existing
             item_ids.append(existing)
@@ -537,6 +539,30 @@ def _write(conn, state: SessionState, plan: dict) -> dict:
         "item_ids": list(dict.fromkeys(item_ids)),
         "pending_ids": list(dict.fromkeys(pending_ids)),
     }
+
+
+def metric_key(m: dict) -> tuple:
+    """Two metrics are the same fact when their stated numbers match (wording may differ)."""
+
+    def r(v):
+        return None if v is None else round(float(v), 4)
+
+    return (
+        r(m.get("baseline")),
+        r(m.get("final")),
+        r(m.get("delta_pct")) if m.get("baseline") is None and m.get("final") is None else None,
+    )
+
+
+def _new_metrics(candidates: list[dict], have: list[tuple]) -> list[dict]:
+    out, seen = [], list(have)
+    for m in candidates:
+        k = metric_key(m)
+        if k in seen:
+            continue
+        seen.append(k)
+        out.append(m)
+    return out
 
 
 def session_stats(state: SessionState) -> dict:

@@ -31,6 +31,32 @@ ASKED_FOR_ADVICE = (
     "suggest",
     "recommend",
 )
+FORWARD = (
+    "tomorrow",
+    "next time",
+    "next session",
+    "later",
+    "ask you",
+    "i'll ask",
+    "check back",
+    "come back",
+    "follow up",
+)
+_GENERIC = {
+    "numbers",
+    "number",
+    "what",
+    "changed",
+    "after",
+    "part",
+    "how",
+    "came",
+    "together",
+    "why",
+    "mattered",
+    "your",
+    "the",
+}
 MISSED = ("miss", "anything else", "leave out", "left out", "forget anything", "forgot")
 _MD = re.compile(r"(^\s*[-*•]\s+|^\s*\d+\.\s+|^#+\s*|\*\*|__|`|https?://\S+)", re.M)
 _EMOJI = re.compile("[\U0001f300-\U0001faff☀-➿️]")
@@ -66,11 +92,14 @@ def check(reply: str, ctx: GuardContext) -> dict[str, bool]:
         "fidelity": not numbers_unsupported(reply, ctx.sources),
     }
     if ctx.wrap:
+        # each promised question must be named by its own words (not the generic gap words), and
+        # the reply must say it's coming back to them; a plain read-back doesn't count
         named = all(
-            any(w in low for w in _words(topic) if w not in _STOP and len(w) > 2)
+            any(w in low for w in _words(topic) if w not in _STOP | _GENERIC and len(w) > 2)
             for topic in ctx.promised
         )
-        res["phase"] = any(m in low for m in MISSED) and named
+        forward = not ctx.promised or any(c in low for c in FORWARD)
+        res["phase"] = any(m in low for m in MISSED) and named and forward
     return res
 
 

@@ -11,6 +11,27 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
 - [ ] **RQ-02 · Push to GitHub.** The remote `ayan2809/daybook` is set. The agent pushes the feature branch
   (code only, no secrets). Confirm the repo should stay public. *Assumed:* yes (plan §22).
 
+- [ ] **RQ-03 · Gemini TTS price.** `obs/pricing.yaml` has a conservative placeholder for
+  `gemini-3.8-flash-lite-tts` (not verified against the pricing page). The spend breaker uses it.
+  *Assumed:* placeholder until checked; the whole live demo run (voice included) counted $0.039.
+- [ ] **RQ-04 · Turn latency ≈ 3.2 s p50** (target ≤ 2.5 s; DB-14). Options: (a) accept for now; text
+  shows at once and voice follows; (b) merge Researcher + fast pass into one call (saves no hop, only
+  tokens); (c) start the Chat call in parallel with the analysis using the previous turn's plan, then
+  re-check (complex); (d) measure again from Lambda in ap-south-1 after deploy (likely lower).
+  *Recommendation:* (a) now, then (d). *Assumed:* (a).
+- [ ] **RQ-05 · First live eval run.** Estimate **$0.24** for all suites (`make eval-live` prints it,
+  needs `--yes`). Plan 13.4 asks for your sign-off on the eval inputs (RQ-20), the grading method and
+  the cost first. *Assumed:* not run yet.
+- [ ] **RQ-06 · "Pending questions at the end" setting.** The setting is stored, but the engine always
+  asks pending questions at the start (your choice in plan 22.2). Build the "end" variant, or remove the
+  setting? *Assumed:* start only.
+- [ ] **RQ-07 · Demo replay.** Replay mode works but has no recorded session yet
+  (`data/seed/replay.json`). Record one real demo session with ElevenLabs audio once the key arrives.
+- [ ] **RQ-08 · Your owner key.** Run `make owner-key` yourself: it prints the key once and stores only
+  its hash in `.env`. The agent didn't generate one, so it never saw your key.
+- [ ] **RQ-09 · Ownership wording in bullets.** Live deep pass turned "helping a friend" into "Mentored…".
+  Prompt v2 forbids it (DB-18); confirm with the live extraction eval (RQ-05).
+
 ## Device / manual tests (can't be done by the agent)
 
 - [ ] **RQ-10 · Spikes S2, S3, S4** (iPhone push + Watch, Wispr Flow keyboard in the installed PWA,
@@ -28,3 +49,6 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
   plan says "next time" because 10-23 is a Friday.
 
 ## Cost sign-offs
+
+- [ ] **RQ-30 · Spend so far (2026-10-24/25, dev):** spikes + two live terminal sessions + one live
+  browser demo run + latency probes, roughly $0.10 in total per the app's own counters.

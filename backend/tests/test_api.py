@@ -16,8 +16,7 @@ NOW = {"X-Debug-Now": "2026-10-27T19:05:00+05:30"}  # a Tuesday
 
 @pytest.fixture
 def client(tmp_path):
-    app = make_app(tmp_path, owner_key_hash=hashlib.sha256(b"k3y").hexdigest(),
-                   origin_verify="")
+    app = make_app(tmp_path, owner_key_hash=hashlib.sha256(b"k3y").hexdigest(), origin_verify="")
     set_app(app)
     with TestClient(api) as c:
         c.app_ = app
@@ -32,8 +31,11 @@ def demo(client):
 
 
 def turn(client, sid, text, **hdr):
-    r = client.post(f"/api/sessions/{sid}/turns", headers={**H, **NOW, **hdr},
-                    json={"client_turn_id": uuid.uuid4().hex, "text": text, "dictated_chars": len(text)})
+    r = client.post(
+        f"/api/sessions/{sid}/turns",
+        headers={**H, **NOW, **hdr},
+        json={"client_turn_id": uuid.uuid4().hex, "text": text, "dictated_chars": len(text)},
+    )
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -47,7 +49,10 @@ def test_auth_rules(client):
     demo(client)
     r = client.get("/api/admin/sessions")
     assert r.status_code == 403 and r.json()["error"]["code"] == "forbidden"
-    assert client.post("/api/auth/login", headers=H, json={"owner_key": "k3y"}).json()["role"] == "owner"
+    assert (
+        client.post("/api/auth/login", headers=H, json={"owner_key": "k3y"}).json()["role"]
+        == "owner"
+    )
     assert client.get("/api/admin/sessions").status_code == 200
 
 
@@ -76,12 +81,14 @@ def test_demo_today_and_reflection(client):
     audio = client.get(f"/api/turns/{r['turn_id']}/audio")
     assert audio.status_code == 200 and audio.headers["content-type"] == "audio/wav"
     r = turn(client, sid, "Not sure yet, I'll check tomorrow.")  # the second pending
-    r = turn(client, sid, "I finished the load test: the retry service held up to 450 requests per second.")
+    r = turn(
+        client,
+        sid,
+        "I finished the load test: the retry service held up to 450 requests per second.",
+    )
     r = turn(client, sid, "stop")
     assert r["ended"]
-    client.app_  # finalize runs in-process; poll the summary
-    import asyncio
-    asyncio.get_event_loop_policy()
+    # finalize runs in-process; poll the summary
     for _ in range(50):
         sm = client.get(f"/api/sessions/{sid}/summary").json()
         if sm["status"] == "finalized":
@@ -96,11 +103,17 @@ def test_fix_by_voice_on_seeded_item(client):
     demo(client)
     items = client.get("/api/memories", params={"q": "50%"}).json()["items"]
     target = next(i for i in items if any(m["delta_pct"] == -50 for m in i["metrics"]))
-    r = client.post("/api/sessions", headers={**H, **NOW}, json={"mode": "edit", "item_id": target["id"]})
+    r = client.post(
+        "/api/sessions", headers={**H, **NOW}, json={"mode": "edit", "item_id": target["id"]}
+    )
     s = r.json()["session"]
     assert s["pending_action"]["kind"] == "describe_edit"
     r = turn(client, s["id"], "It was 40% faster, not 50%.")
-    assert r["pending_action"]["kind"] == "confirm_edit" and "50%" in r["reply_text"] and "40%" in r["reply_text"]
+    assert (
+        r["pending_action"]["kind"] == "confirm_edit"
+        and "50%" in r["reply_text"]
+        and "40%" in r["reply_text"]
+    )
     r = turn(client, s["id"], "Yes.")
     assert r["ended"] and "Done, updated" in r["reply_text"]
     d = client.get(f"/api/memories/{target['id']}").json()
@@ -111,7 +124,9 @@ def test_fix_by_voice_on_seeded_item(client):
 
 def test_fix_by_voice_inside_guided_session(client):
     demo(client)
-    sid = client.post("/api/sessions", headers={**H, **NOW}, json={"mode": "guided"}).json()["session"]["id"]
+    sid = client.post("/api/sessions", headers={**H, **NOW}, json={"mode": "guided"}).json()[
+        "session"
+    ]["id"]
     turn(client, sid, "skip")
     turn(client, sid, "skip")
     r = turn(client, sid, "Actually, that migration last Tuesday was 40% faster, not 50.")
@@ -125,10 +140,15 @@ def test_fix_by_voice_inside_guided_session(client):
 
 def test_ask_and_abstain(client):
     demo(client)
-    r = client.post("/api/ask", headers={**H, **NOW}, json={"question": "When did I present to the CFO?"})
+    r = client.post(
+        "/api/ask", headers={**H, **NOW}, json={"question": "When did I present to the CFO?"}
+    )
     assert r.status_code == 200 and r.json()["abstained"]
-    r = client.post("/api/ask", headers={**H, **NOW},
-                    json={"question": "What did I do on the webhook retry service?"}).json()
+    r = client.post(
+        "/api/ask",
+        headers={**H, **NOW},
+        json={"question": "What did I do on the webhook retry service?"},
+    ).json()
     assert not r["abstained"] and r["citations"]
     assert all(str(c["item_id"]) in r["refs"] for c in r["citations"])
 
@@ -137,14 +157,21 @@ def test_typed_pending_answer_and_timeline_edit(client):
     demo(client)
     p = client.get("/api/pending", headers=NOW).json()["pending"]
     metric_q = next(q for q in p if q["kind"] == "metric")
-    c = client.post(f"/api/pending/{metric_q['id']}/answer", headers={**H, **NOW},
-                    json={"text": "from 40 to 6 alerts a week"}).json()["candidate"]
+    c = client.post(
+        f"/api/pending/{metric_q['id']}/answer",
+        headers={**H, **NOW},
+        json={"text": "from 40 to 6 alerts a week"},
+    ).json()["candidate"]
     assert c["kind"] == "metric"
-    r = client.post(f"/api/pending/{metric_q['id']}/confirm", headers={**H, **NOW}, json={"candidate": c})
+    r = client.post(
+        f"/api/pending/{metric_q['id']}/confirm", headers={**H, **NOW}, json={"candidate": c}
+    )
     assert r.json()["pending"]["status"] == "answered"
     assert r.json()["item"]["metrics"][0]["baseline"] == 40
     iid = r.json()["item"]["id"]
-    r = client.patch(f"/api/memories/{iid}", headers=H, json={"fields": {"title": "Tuned retry alerts"}})
+    r = client.patch(
+        f"/api/memories/{iid}", headers=H, json={"fields": {"title": "Tuned retry alerts"}}
+    )
     assert r.json()["item"]["title"] == "Tuned retry alerts"
     v1 = client.get(f"/api/memories/{iid}").json()["versions"][-1]["version"]
     r = client.post(f"/api/memories/{iid}/restore", headers=H, json={"version": v1})
@@ -162,8 +189,15 @@ def test_demo_caps_replay(client):
 
 def test_settings_roundtrip_and_validation(client):
     client.post("/api/auth/login", headers=H, json={"owner_key": "k3y"})
-    s = client.put("/api/settings", headers=H, json={"session_limit_sec": 300, "reminder": {"time": "18:30"},
-                                                      "profile": {"org": "Side projects"}}).json()
+    s = client.put(
+        "/api/settings",
+        headers=H,
+        json={
+            "session_limit_sec": 300,
+            "reminder": {"time": "18:30"},
+            "profile": {"org": "Side projects"},
+        },
+    ).json()
     assert s["session_limit_sec"] == 300 and s["reminder"]["time"] == "18:30"
     assert s["reminder"]["second_time"] == "21:00" and s["profile"]["org"] == "Side projects"
     r = client.put("/api/settings", headers=H, json={"session_limit_sec": 999})

@@ -80,7 +80,7 @@ interface Turn {
 
 interface PendingAction { kind: "confirm_edit" | "confirm_metric" | "pick_item" | "describe_edit"; prompt: string }
 
-interface SafetyInfo { helpline_name: string; helpline_number: string; tel: string; message: string }
+interface SafetyInfo { helpline_name: string; helpline_number: string; tel: string /* "tel:14416" */; message: string }
 
 interface SessionView {
   id: string; mode: Mode; status: "active" | "ended" | "finalizing" | "finalized" | "failed";
@@ -97,6 +97,14 @@ interface Settings {
   profile: { display_name: string | null; org: string | null; role_title: string | null; timezone: string };
 }
 ```
+
+## Clarifications (2026-10-25)
+
+- Push payload (sent by the server, read by `sw.ts`): `{title, body, url}`.
+- All exports (`/api/export/*`) are owner-only. Demo users can `GET`/`PUT /api/settings`; a demo's
+  `reminder` changes are ignored.
+- `include_hidden=true` on `GET /api/memories` includes hidden items.
+- There's no read-aloud endpoint for Ask or Remind me yet (P1).
 
 ## Endpoints
 
@@ -121,7 +129,7 @@ interface Settings {
 | `GET /api/sessions/{id}` | | `{session: SessionView}` (use to restore after reload) |
 | `POST /api/sessions/{id}/turns` | `{client_turn_id: string (uuid), text: string (1–4000 chars), dictated_chars: number}` | `TurnResult` (below). Idempotent on `client_turn_id`: a retry returns the same result. |
 | `GET /api/turns/{turn_id}/audio` | | the reply audio: `audio/wav` (Gemini voice) or `audio/mpeg` (ElevenLabs). **204** when voice is off for the session or out of budget; **503** when TTS failed (show "voice unavailable"). |
-| `POST /api/sessions/{id}/end` | `{reason: "user" \| "idle"}` (beacon: text/plain body is fine) | 202 `{status}` |
+| `POST /api/sessions/{id}/end` | `{reason: "user" \| "idle"}` (beacon: text/plain body is fine) | 202 `{status}`. `user` ends the session now. `idle` (send it on `pagehide`) is a soft signal: the server ends the session only if no turn arrives within 2 minutes (DB-13). Ending an already-ended session returns 202 with its status; an unknown id is 404. |
 | `GET /api/sessions/{id}/summary` | | `Summary` (below). Poll every 1.5 s until `status` is `finalized` or `failed`. |
 | `POST /api/sessions/{id}/feedback` | `{value: "up" \| "down"}` | `{ok: true}` |
 
@@ -136,7 +144,7 @@ interface TurnResult {
 interface Summary {
   session_id: string; status: "ended" | "finalizing" | "finalized" | "failed"; date: string;
   day_summary: string | null; items: MemoryItem[]; pending_created: Pending[];
-  stats: { duration_sec: number; turns: number; spoken_pct: number | null }; feedback: "up" | "down" | null;
+  stats: { duration_sec: number; turns: number; spoken_pct: number | null /* 0–100 */ }; feedback: "up" | "down" | null;
 }
 ```
 

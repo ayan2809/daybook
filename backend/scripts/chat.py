@@ -21,7 +21,7 @@ from daybook.memory import repo
 
 async def main() -> None:
     app = App(tts=None)
-    mode = (input("mode [guided/dump/quick] (guided): ").strip() or "guided")
+    mode = input("mode [guided/dump/quick] (guided): ").strip() or "guided"
     try:
         s = await conductor.start_session(app, OWNER, mode, datetime.now(UTC))
     except conductor.SessionError as exc:
@@ -43,13 +43,16 @@ async def main() -> None:
             await conductor.end_session(app, OWNER, s.id, "user", datetime.now(UTC))
             break
         try:
-            r = await conductor.handle_turn(app, OWNER, s.id, uuid.uuid4().hex, text, len(text),
-                                            datetime.now(UTC))
+            r = await conductor.handle_turn(
+                app, OWNER, s.id, uuid.uuid4().hex, text, len(text), datetime.now(UTC)
+            )
         except conductor.SessionError as exc:
             print(f"  [{exc.code}] {exc.message}")
             break
         chips = ", ".join(f"{i['title'][:40]} [{i['chip']}]" for i in r["board"]["items"])
-        print(f"\nDaybook: {r['reply_text']}\n  ({r['phase']}, {r['seconds_left']} s left; board: {chips})\n")
+        print(
+            f"\nDaybook: {r['reply_text']}\n  ({r['phase']}, {r['seconds_left']} s left; board: {chips})\n"
+        )
         if r["ended"]:
             break
     print("\nFinalizing…")
@@ -69,7 +72,9 @@ async def main() -> None:
                     print(f"    note: {it['validation_note']}")
             for p in loaded.summary["pending_created"]:
                 print(f"? {p['question']}")
-        print(f"\ncost ≈ ${loaded.budgets['cost_usd']:.4f}; latencies (ms): {loaded.turn_latencies}")
+        print(
+            f"\ncost ≈ ${loaded.budgets['cost_usd']:.4f}; latencies (ms): {loaded.turn_latencies}"
+        )
         print(json.dumps(loaded.guard_fails) if loaded.guard_fails else "guards: no failures")
 
 

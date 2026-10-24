@@ -10,3 +10,8 @@ dist/
 data/local/
 *.db
 !data/seed/*.db
+data/local-live/
+data/chat-live.log
+evals/results/*-fake.json
+evals/results/report.md
+frontend/dev-dist/

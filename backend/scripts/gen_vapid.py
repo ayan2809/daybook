@@ -17,8 +17,11 @@ def b64url(b: bytes) -> str:
 if __name__ == "__main__":
     key = ec.generate_private_key(ec.SECP256R1())
     priv = b64url(key.private_numbers().private_value.to_bytes(32, "big"))
-    pub = b64url(key.public_key().public_bytes(
-        serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint))
+    pub = b64url(
+        key.public_key().public_bytes(
+            serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint
+        )
+    )
     set_env("VAPID_PRIVATE_KEY", priv)
     set_env("VAPID_PUBLIC_KEY", pub)
     print("VAPID keys written to .env (public key):", pub)

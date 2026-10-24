@@ -88,3 +88,19 @@ async def test_safety_path_skips_llm(tmp_path):
     assert len(app.llm.calls) == n_calls  # no LLM call
     loaded = conductor.st.load(app.store, OWNER.prefix, s.id)[0]
     assert loaded.turns[-2].text == "(not saved)"
+
+
+def test_metric_dedupe_by_value():
+    from daybook.engine.finalize import _new_metrics, metric_key
+
+    have = [metric_key({"baseline": 40, "final": 6, "delta_pct": -85, "source_text": "40 to 6"})]
+    cands = [
+        {
+            "baseline": 40.0,
+            "final": 6.0,
+            "source_text": "It went from about 40 alerts a week to around 6.",
+        },
+        {"baseline": 40, "final": 6, "source_text": "about 40 alerts"},
+        {"delta_pct": -35, "source_text": "dropped 35%"},
+    ]
+    assert [m["source_text"] for m in _new_metrics(cands, have)] == ["dropped 35%"]

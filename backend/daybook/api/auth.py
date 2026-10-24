@@ -71,7 +71,9 @@ def me(
 
 
 @router.post("/demo/start")
-async def demo_start(response: Response, app: App = Depends(app_dep), now: datetime = Depends(now_dep)):
+async def demo_start(
+    response: Response, app: App = Depends(app_dep), now: datetime = Depends(now_dep)
+):
     user = await demo.create_sandbox(app, now)
     set_cookie(response, app, "demo", user.sandbox_id)
     return {"role": "demo", "sandbox_id": user.sandbox_id}

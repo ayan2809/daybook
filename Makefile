@@ -51,3 +51,9 @@ vapid: ## generate VAPID keys for Web Push into .env
 
 build-web: ## production build of the PWA
 	cd frontend && npm run build
+
+eval: ## eval suites in fake mode (plumbing only; free)
+	uv run --project backend python -m evals run --suite all --mode fake
+
+eval-live: ## live eval run: prints the cost estimate and needs --yes (get Ayan's sign-off first)
+	uv run --project backend python -m evals run --suite $${SUITE:-all} --mode live

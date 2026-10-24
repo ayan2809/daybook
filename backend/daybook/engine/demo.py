@@ -145,7 +145,7 @@ def replay_payload() -> dict:
     }
 
 
-def build_seed_db(path: Path, embed: bool = False) -> sqlite3.Connection:
+def build_seed_db(path: Path) -> tuple[sqlite3.Connection, dict[str, int]]:
     """Build the demo vault from meera.json (no LLM). Embeddings are added by `index()` later."""
     data = json.loads(SEED_JSON.read_text())
     path.unlink(missing_ok=True)
@@ -248,4 +248,4 @@ def build_seed_db(path: Path, embed: bool = False) -> sqlite3.Connection:
                 repo.resolve_pending(conn, pid, pq["status"], pq.get("answer_text"))
         repo.upsert_digest(conn, "day", d, d, day["day_summary"], ids)
     conn.execute("COMMIT")
-    return conn
+    return conn, keys

@@ -22,7 +22,7 @@ from daybook.storage.blob import LocalBlobStore
 
 async def main() -> None:
     tmp = Path(tempfile.mkdtemp())
-    conn = build_seed_db(tmp / "seed.db")
+    conn, _ = build_seed_db(tmp / "seed.db")
     db.close(conn)
     store = LocalBlobStore(tmp / "blobs")
     store.put("seed/memory.db", (tmp / "seed.db").read_bytes())

@@ -42,7 +42,7 @@ export function SummaryBody({ summary, interactive = true }: { summary: Summary;
       <p className="muted small">
         {Math.round(summary.stats.duration_sec / 60)} min · {summary.stats.turns} turns
         {summary.stats.spoken_pct != null &&
-          ` · about ${Math.round(summary.stats.spoken_pct <= 1 ? summary.stats.spoken_pct * 100 : summary.stats.spoken_pct)}% of this reflection was spoken (an estimate)`}
+          ` · about ${Math.round(summary.stats.spoken_pct)}% of this reflection was spoken (an estimate)`}
       </p>
 
       {interactive && <Feedback sessionId={summary.session_id} initial={summary.feedback} />}
