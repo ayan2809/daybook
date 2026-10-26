@@ -1,9 +1,10 @@
 # Build status (handoff file)
 
-Read this first. It says what exists, what works, how to run it and what's next. Update it at the end of
+Read this first. It says what exists, what works, how to run it and what's next. For how the code
+works (low-level architecture), read the root `README.md`. Update it at the end of
 every working block. Owner of the build: the main implementation agent; subagents only read it.
 
-**Last updated:** 2026-10-25 (early morning IST) · **Branch:** `feature/initial-implementation`
+**Last updated:** 2026-10-25 (evening IST) · **Branch:** `feature/initial-implementation`
 **State:** M1 (engine), M2 (PWA core) and M3 (memory features) work locally, in fake mode and against
 live Gemini. Nothing is deployed (no infra changes until Ayan says so).
 
@@ -16,7 +17,8 @@ make dev                         # API :8300 (fake LLM) + Vite :5173 with the /a
 make dev-live                    # same with real Gemini: LLM + gemini-embedding-2 + Gemini TTS voice
 make chat / make chat-live       # a full reflection in the terminal
 make eval                        # eval suites in fake mode (plumbing only; free)
-make seed                        # rebuild data/seed/demo-memory.db (use DAYBOOK_EMBED=gemini for prod)
+make seed                        # rebuild data/seed/demo-memory.db from demo-persona.json (DAYBOOK_EMBED=gemini for prod)
+make check-data                  # seed + eval inputs consistent (keys, quotes, numbers)
 make owner-key / make vapid      # owner sign-in key (prints once) / Web Push keys, both into .env
 ```
 
@@ -59,7 +61,7 @@ Legend: ✅ done and tested · 🟡 partial · ⬜ not started
 | Voice | 🟡 | Gemini TTS works; ElevenLabs written to its docs, untested (RQ-01); pre-recorded lines (P1) not built |
 | Push + reminders | 🟡 | tick logic tested with a fake sender; real Web Push needs HTTPS + device (RQ-10) |
 | Traces, Admin API, session judge | ✅ | Admin UI built by the frontend subagent; checked only by type-check |
-| Demo sandbox, seed, caps, replay | 🟡 | replay has no recorded session yet (RQ-07) |
+| Demo sandbox, seed, caps, replay | 🟡 | persona: Ayan at Kestrel Travel, fictional, plain words (DB-25); replay has no recorded session yet (RQ-07) |
 | Frontend PWA | ✅ | all screens; browser-tested flows above; not yet on a real phone |
 | Eval runner + data | 🟡 | fake mode in CI; live run waits for sign-off (RQ-05); `sim` suite (P1) not built |
 | CI (GitHub Actions) | ✅ | `.github/workflows/ci.yml`: ruff, pytest, fake evals, tsc, build |

@@ -116,7 +116,7 @@ interface Settings {
 | `POST /api/auth/login` | `{owner_key}` | `{role: "owner"}` (sets cookie) · 401 on a bad key |
 | `POST /api/auth/logout` | | `{ok: true}` |
 | `GET /api/me` | | `{role: Role \| null, settings: Settings \| null, demo: {sandbox_id, sessions_left, asks_left, replay_only: boolean} \| null, features: {voice: boolean, push: boolean, vapid_public_key: string \| null}}`. Signed out → `role: null` (200, not 401). |
-| `POST /api/demo/start` | | `{role: "demo", sandbox_id}` (sets cookie; new sandbox seeded with Meera) |
+| `POST /api/demo/start` | | `{role: "demo", sandbox_id}` (sets cookie; new sandbox seeded with the demo persona) |
 | `GET /api/demo/replay` | | `{banner: string, turns: Turn[] (with `audio_url: string \| null`), summary: Summary}` |
 | `GET /api/demo/last-trace` | | the sandbox's last turn trace (same shape as an admin trace turn) or `null` |
 

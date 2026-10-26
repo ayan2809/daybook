@@ -1,0 +1,811 @@
+{
+  "profile": {
+    "display_name": "Ayan",
+    "org": "Kestrel Travel",
+    "role_title": "Software Engineer",
+    "timezone": "Asia/Kolkata"
+  },
+  "anchor_date": "2026-10-23",
+  "projects": [
+    {
+      "name": "Help Centre Search",
+      "aliases": ["help search", "search", "help centre", "help center search"],
+      "kind": "work",
+      "summary": "The search box on Kestrel's help centre: travellers type a question and should land on the right help article."
+    },
+    {
+      "name": "Trip Assistant",
+      "aliases": ["assistant", "the assistant", "chat assistant", "the bot"],
+      "kind": "work",
+      "summary": "An AI assistant that answers traveller questions from the help articles and shows which article each answer came from."
+    },
+    {
+      "name": "Article Import",
+      "aliases": ["nightly import", "import job", "the import", "article sync"],
+      "kind": "work",
+      "summary": "The nightly job that pulls new and edited help articles in, so search and the assistant stay up to date."
+    }
+  ],
+  "days": [
+    {
+      "date": "2026-10-12",
+      "mode": "guided",
+      "energy": 4,
+      "mood_word": "curious",
+      "turns": [
+        {"role": "assistant", "text": "Hi Ayan, good to start the week with you. What stood out today?"},
+        {"role": "user", "text": "So today I mostly went through last week's search logs for the help centre. Honestly it was a bit of a surprise, about 12% of searches come back with nothing at all. A lot of them are just typos, like people typing refnd instead of refund."},
+        {"role": "assistant", "text": "That's a useful thing to find. What did the team decide to do about it?"},
+        {"role": "user", "text": "I suggested we handle spelling mistakes first, since that's the biggest chunk, and the team agreed. The other stuff, like people using different words for the same thing, can wait."},
+        {"role": "assistant", "text": "Makes sense to start with the biggest piece. What's the one thing for tomorrow?"},
+        {"role": "user", "text": "Tomorrow I'll try adding typo tolerance to search and see if refnd finds the refund article."}
+      ],
+      "day_summary": "You went through last week's help centre search logs and found that about 12% of searches return nothing, many of them typos like 'refnd'. You suggested fixing spelling mistakes first, and the team agreed. Tomorrow you plan to try typo tolerance in search.",
+      "items": [
+        {
+          "key": "search-zero-results",
+          "kind": "progress",
+          "status": "active",
+          "project": "Help Centre Search",
+          "title": "Found that about 12% of help centre searches return nothing",
+          "what": "Went through last week's help centre search logs and found that about 12% of searches return no results, many of them because of typos.",
+          "how": "Read through the search logs and grouped the empty searches; a lot were simple typos like 'refnd' for 'refund'.",
+          "result": null,
+          "bullet": null,
+          "ownership": "did",
+          "quantifiable": "yes",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "about 12% of searches come back with nothing at all",
+          "skills": ["Search tuning", "Data analysis"],
+          "metrics": [
+            {"name": "searches with no results", "category": "quality", "unit": "%", "baseline": 12, "final": null, "delta_pct": null, "better_when": "lower", "period": null, "approx": true, "source_text": "about 12% of searches come back with nothing at all"}
+          ],
+          "links": []
+        },
+        {
+          "key": "typo-fix-decision",
+          "kind": "decision",
+          "status": "active",
+          "project": "Help Centre Search",
+          "title": "Team agreed to fix spelling mistakes in search first",
+          "what": "Suggested handling spelling mistakes first, since they were the biggest share of empty searches, and the team agreed.",
+          "how": null,
+          "result": "The team will tackle typos before other causes, like different words for the same thing.",
+          "bullet": null,
+          "ownership": "did",
+          "quantifiable": "no",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "I suggested we handle spelling mistakes first, since that's the biggest chunk, and the team agreed.",
+          "skills": ["Prioritisation"],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "search-zero-results"}]
+        },
+        {
+          "key": "plan-typo-fix",
+          "kind": "plan",
+          "status": "active",
+          "project": "Help Centre Search",
+          "title": "Try typo tolerance in search",
+          "what": "Plan to add typo tolerance to search tomorrow, so 'refnd' finds the refund article.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": null,
+          "impact": 1,
+          "source_quote": "Tomorrow I'll try adding typo tolerance to search",
+          "skills": [],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "typo-fix-decision"}]
+        }
+      ],
+      "pending": [
+        {"item": "search-zero-results", "kind": "metric", "question": "Once the typo fix is live, what share of help centre searches come back empty?", "status": "answered", "times_asked": 1, "answer_text": "It went from about 12% to 7%."}
+      ]
+    },
+    {
+      "date": "2026-10-13",
+      "mode": "guided",
+      "energy": 3,
+      "mood_word": "steady",
+      "turns": [
+        {"role": "assistant", "text": "Welcome back. Last time you were going to try typo tolerance in search. How did it go?"},
+        {"role": "user", "text": "Good, I got it working on my machine. Now refnd finds the refund article, and bagage finds the baggage one. One thing I learned is you have to switch it off for really short words, otherwise visa starts matching vista and the results get weird."},
+        {"role": "assistant", "text": "That's a nice catch. What else happened today?"},
+        {"role": "user", "text": "A new junior joined our team, so I spent most of the afternoon with them. I walked them through how the search and the nightly import fit together, and gave them a small first ticket to start with."},
+        {"role": "assistant", "text": "How did they take to it?"},
+        {"role": "user", "text": "Pretty well I think. They asked good questions, and they already have a pull request open for the ticket."}
+      ],
+      "day_summary": "You got typo tolerance working on your machine, so 'refnd' now finds the refund article. You learned it has to be off for very short words, or 'visa' starts matching 'vista'. You also spent the afternoon onboarding the new junior on the team, who already has a first pull request open.",
+      "items": [
+        {
+          "key": "typo-fix-working",
+          "kind": "progress",
+          "status": "active",
+          "project": "Help Centre Search",
+          "title": "Typo tolerance working locally in search",
+          "what": "Got typo tolerance working on my machine, so 'refnd' finds the refund article and 'bagage' finds the baggage one.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": "did",
+          "quantifiable": "maybe",
+          "scope": "individual",
+          "impact": 2,
+          "source_quote": "I got it working on my machine. Now refnd finds the refund article",
+          "skills": ["Search tuning", "Python"],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "plan-typo-fix"}]
+        },
+        {
+          "key": "learn-typo-short-words",
+          "kind": "learning",
+          "status": "active",
+          "project": "Help Centre Search",
+          "title": "Typo tolerance needs to be off for very short words",
+          "what": "Learned that typo tolerance has to be switched off for very short words, or 'visa' starts matching 'vista'.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": "individual",
+          "impact": 1,
+          "source_quote": "you have to switch it off for really short words, otherwise visa starts matching vista",
+          "skills": ["Search tuning"],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "typo-fix-working"}]
+        },
+        {
+          "key": "mentor-junior-onboarding",
+          "kind": "soft_skill",
+          "status": "active",
+          "project": null,
+          "title": "Onboarded the new junior on the team",
+          "what": "Spent the afternoon walking the new junior through how search and the nightly import fit together, and gave them a small first ticket.",
+          "how": "Walked them through the system, then picked a small ticket to start with.",
+          "result": "They already have a pull request open for the ticket.",
+          "bullet": "Onboarded a new junior engineer by walking them through how help centre search and the nightly import fit together, and picking a small first ticket",
+          "ownership": "did",
+          "quantifiable": "no",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "I walked them through how the search and the nightly import fit together, and gave them a small first ticket to start with.",
+          "skills": ["Mentoring"],
+          "metrics": [],
+          "links": []
+        }
+      ],
+      "pending": [
+        {"item": "mentor-junior-onboarding", "kind": "outcome", "question": "Did the junior's first pull request get merged?", "status": "answered", "times_asked": 1, "answer_text": "Yes, it got merged this morning."}
+      ]
+    },
+    {
+      "date": "2026-10-14",
+      "mode": "guided",
+      "energy": 2,
+      "mood_word": "frustrated",
+      "turns": [
+        {"role": "assistant", "text": "Hi Ayan. Last time the junior had a pull request open. Did it get merged?"},
+        {"role": "user", "text": "Yes, it got merged this morning, they were really happy about that."},
+        {"role": "assistant", "text": "Nice. How was the rest of your day?"},
+        {"role": "user", "text": "Honestly frustrating. The nightly article import now takes about 3 hours, so it runs into the morning and new help articles show up late in search. I couldn't figure out why yet, I spent the whole day just reading logs."},
+        {"role": "assistant", "text": "That sounds draining. Was there anything that went okay?"},
+        {"role": "user", "text": "Yeah, I started a list of real traveller questions with the ML team so we can test the trip assistant properly. We have about 120 so far."}
+      ],
+      "day_summary": "The junior's first pull request got merged this morning. Most of your day went into the nightly article import, which now takes about 3 hours and runs into the morning, and you haven't found the cause yet. You also started a list of real traveller questions with the ML team to test the trip assistant, about 120 so far.",
+      "items": [
+        {
+          "key": "import-slow-blocker",
+          "kind": "blocker",
+          "status": "active",
+          "project": "Article Import",
+          "title": "Blocked: the nightly article import takes about 3 hours",
+          "what": "The nightly article import now takes about 3 hours and runs into the morning, so new help articles show up late in search. The cause isn't clear yet.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "yes",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "The nightly article import now takes about 3 hours, so it runs into the morning",
+          "skills": ["Debugging"],
+          "metrics": [
+            {"name": "nightly import time", "category": "time", "unit": "hours", "baseline": 3, "final": null, "delta_pct": null, "better_when": "lower", "period": "per-day", "approx": true, "source_text": "The nightly article import now takes about 3 hours"}
+          ],
+          "links": []
+        },
+        {
+          "key": "assistant-test-questions",
+          "kind": "progress",
+          "status": "active",
+          "project": "Trip Assistant",
+          "title": "Started a test list of real traveller questions for the assistant",
+          "what": "Started a list of real traveller questions with the ML team to test the trip assistant properly; about 120 so far.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": "did",
+          "quantifiable": "maybe",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "I started a list of real traveller questions with the ML team so we can test the trip assistant properly",
+          "skills": ["Testing AI answers"],
+          "metrics": [],
+          "links": []
+        }
+      ],
+      "pending": [
+        {"item": "import-slow-blocker", "kind": "clarify", "question": "What's making the nightly import slow: fetching the articles, or updating search?", "status": "dismissed", "times_asked": 1}
+      ]
+    },
+    {
+      "date": "2026-10-15",
+      "mode": "guided",
+      "energy": 2,
+      "mood_word": "relieved",
+      "turns": [
+        {"role": "assistant", "text": "Hi Ayan. How did today go?"},
+        {"role": "user", "text": "Rough morning. Support pinged us that the trip assistant was telling travellers the old refund rules. Turns out the import was quietly skipping articles that had been edited, it only picked up new ones."},
+        {"role": "assistant", "text": "That sounds stressful. What did you do?"},
+        {"role": "user", "text": "I found the bug, fixed it so it checks when an article was last edited, and re-ran the import for the articles it missed. The right answers were back in about 2 hours."},
+        {"role": "assistant", "text": "Good recovery. What's next on it?"},
+        {"role": "user", "text": "Tomorrow I want to write up what happened and add an alert so this can't happen quietly again."}
+      ],
+      "day_summary": "Support reported that the trip assistant was giving travellers the old refund rules. You traced it to the import quietly skipping edited articles, fixed it and re-ran the import, and the right answers were back in about 2 hours. Tomorrow you want to write up what happened and add an alert.",
+      "items": [
+        {
+          "key": "assistant-old-refund-incident",
+          "kind": "challenge",
+          "status": "active",
+          "project": "Article Import",
+          "title": "Fixed the assistant giving travellers old refund rules",
+          "what": "Support reported the trip assistant was giving travellers the old refund rules: the import was skipping edited articles and only picking up new ones.",
+          "how": "Found the bug, made the import check when an article was last edited, and re-ran it for the articles it missed.",
+          "result": "The right answers were back in about 2 hours.",
+          "bullet": null,
+          "ownership": "did",
+          "quantifiable": "yes",
+          "scope": "customers",
+          "impact": 3,
+          "source_quote": "the trip assistant was telling travellers the old refund rules",
+          "skills": ["Debugging", "Incident response", "Python"],
+          "metrics": [
+            {"name": "time to fix", "category": "time", "unit": "hours", "baseline": null, "final": 2, "delta_pct": null, "better_when": "lower", "period": "one-time", "approx": true, "source_text": "The right answers were back in about 2 hours"}
+          ],
+          "links": []
+        },
+        {
+          "key": "learn-check-edited",
+          "kind": "learning",
+          "status": "active",
+          "project": "Article Import",
+          "title": "The import must look at edit dates, not just new articles",
+          "what": "Learned the import has to check when an article was last edited, not only pick up new ones.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": "individual",
+          "impact": 1,
+          "source_quote": "fixed it so it checks when an article was last edited",
+          "skills": [],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "assistant-old-refund-incident"}]
+        },
+        {
+          "key": "plan-incident-writeup",
+          "kind": "plan",
+          "status": "active",
+          "project": "Article Import",
+          "title": "Write up the incident and add an alert",
+          "what": "Plan to write up what happened and add an alert so edited articles can't be skipped quietly again.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": null,
+          "impact": 1,
+          "source_quote": "Tomorrow I want to write up what happened and add an alert",
+          "skills": [],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "assistant-old-refund-incident"}]
+        }
+      ],
+      "pending": [
+        {"item": "assistant-old-refund-incident", "kind": "metric", "question": "Roughly how many travellers got the old refund answer before it was fixed?", "status": "dismissed", "times_asked": 1}
+      ]
+    },
+    {
+      "date": "2026-10-16",
+      "mode": "dump",
+      "energy": 4,
+      "mood_word": "lighter",
+      "turns": [
+        {"role": "assistant", "text": "Go ahead, tell me everything from today. I'll sort it out."},
+        {"role": "user", "text": "Okay. So I wrote up yesterday's incident, what broke, how we found it and what we changed, and I added an alert that fires if the import skips any edited articles. My lead said the write-up was really clear and shared it with the other teams, which felt nice."},
+        {"role": "assistant", "text": "Got it. Anything else?"},
+        {"role": "user", "text": "Yes, I also found why the import is so slow. It handles articles one at a time, around 9,000 of them. Next week I want to make it work on several at once."},
+        {"role": "assistant", "text": "Thanks, that's a good way to end the week."}
+      ],
+      "day_summary": "You wrote up yesterday's incident and added an alert that fires if the import skips edited articles. Your lead said the write-up was really clear and shared it with other teams. You also found why the import is slow: it handles about 9,000 articles one at a time, and next week you want it to work on several at once.",
+      "items": [
+        {
+          "key": "incident-writeup-alert",
+          "kind": "achievement",
+          "status": "active",
+          "project": "Article Import",
+          "title": "Wrote up the incident and added an alert for skipped articles",
+          "what": "Wrote up the refund-rules incident (what broke, how it was found, what changed) and added an alert that fires if the import skips edited articles.",
+          "how": null,
+          "result": "The lead shared the write-up with the other teams.",
+          "bullet": "Wrote the incident write-up for stale refund answers in the trip assistant and added an alert that fires when the nightly import skips edited articles",
+          "ownership": "did",
+          "quantifiable": "maybe",
+          "scope": "team",
+          "impact": 3,
+          "source_quote": "I added an alert that fires if the import skips any edited articles",
+          "skills": ["Technical writing", "Monitoring"],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "plan-incident-writeup"}, {"kind": "continues", "to": "assistant-old-refund-incident"}]
+        },
+        {
+          "key": "lead-praise-writeup",
+          "kind": "praise",
+          "status": "active",
+          "project": "Article Import",
+          "title": "Lead shared the incident write-up with other teams",
+          "what": "The team lead said the incident write-up was really clear and shared it with the other teams.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "My lead said the write-up was really clear and shared it with the other teams",
+          "skills": [],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "incident-writeup-alert"}]
+        },
+        {
+          "key": "import-slow-cause",
+          "kind": "progress",
+          "status": "active",
+          "project": "Article Import",
+          "title": "Found why the nightly import is slow",
+          "what": "Found that the nightly import is slow because it handles about 9,000 articles one at a time.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": "did",
+          "quantifiable": "no",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "It handles articles one at a time, around 9,000 of them.",
+          "skills": ["Debugging"],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "import-slow-blocker"}]
+        },
+        {
+          "key": "plan-parallel-import",
+          "kind": "plan",
+          "status": "active",
+          "project": "Article Import",
+          "title": "Make the import work on several articles at once",
+          "what": "Plan to make the nightly import handle several articles at once next week.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": null,
+          "impact": 1,
+          "source_quote": "Next week I want to make it work on several at once.",
+          "skills": [],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "import-slow-cause"}]
+        }
+      ],
+      "pending": []
+    },
+    {
+      "date": "2026-10-19",
+      "mode": "guided",
+      "energy": 4,
+      "mood_word": "good",
+      "turns": [
+        {"role": "assistant", "text": "Welcome back, Ayan. Last time I asked how many searches still come back empty after the typo fix. Do you have that now?"},
+        {"role": "user", "text": "Yes! The typo fix went live today. Searches that come back empty went from about 12% to 7%, so that's a lot more people finding their article."},
+        {"role": "assistant", "text": "That's a real improvement. What else happened today?"},
+        {"role": "user", "text": "I did a code review with the junior. Instead of just fixing things myself I asked questions, so they found most of the issues on their own. It took longer but I think it sticks better."},
+        {"role": "assistant", "text": "What's the plan for tomorrow?"},
+        {"role": "user", "text": "Tomorrow I'll roll out the change that makes the import work on several articles at once."}
+      ],
+      "day_summary": "The typo fix went live, and searches that come back empty dropped from about 12% to 7%. You coached the junior through a code review by asking questions, so they found most of the issues themselves. Tomorrow you plan to roll out the faster import.",
+      "items": [
+        {
+          "key": "typo-fix-live",
+          "kind": "achievement",
+          "status": "active",
+          "project": "Help Centre Search",
+          "title": "Cut empty help centre searches from about 12% to 7%",
+          "what": "Shipped typo tolerance in help centre search; searches with no results went from about 12% to 7%.",
+          "how": "Added typo tolerance to search, switched off for very short words.",
+          "result": "More travellers find the article they're looking for.",
+          "bullet": "Cut help centre searches that return nothing from about 12% to 7% by adding typo tolerance, so misspelled questions like 'refnd' still find the right article",
+          "ownership": "did",
+          "quantifiable": "yes",
+          "scope": "customers",
+          "impact": 3,
+          "source_quote": "Searches that come back empty went from about 12% to 7%",
+          "skills": ["Search tuning", "Python"],
+          "metrics": [
+            {"name": "searches with no results", "category": "quality", "unit": "%", "baseline": 12, "final": 7, "delta_pct": null, "better_when": "lower", "period": null, "approx": true, "source_text": "Searches that come back empty went from about 12% to 7%"}
+          ],
+          "links": [{"kind": "continues", "to": "typo-fix-working"}, {"kind": "continues", "to": "search-zero-results"}]
+        },
+        {
+          "key": "mentor-junior-review",
+          "kind": "soft_skill",
+          "status": "active",
+          "project": null,
+          "title": "Coached the junior through a code review with questions",
+          "what": "Did a code review with the junior and asked questions instead of fixing things, so they found most of the issues on their own.",
+          "how": "Asked questions instead of pointing out fixes.",
+          "result": "They found most of the issues themselves.",
+          "bullet": "Coached a junior engineer through code review by asking questions instead of fixing issues, so they found most problems on their own",
+          "ownership": "did",
+          "quantifiable": "no",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "Instead of just fixing things myself I asked questions, so they found most of the issues on their own.",
+          "skills": ["Mentoring", "Code review"],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "mentor-junior-onboarding"}]
+        },
+        {
+          "key": "plan-import-rollout",
+          "kind": "plan",
+          "status": "active",
+          "project": "Article Import",
+          "title": "Roll out the faster import",
+          "what": "Plan to roll out the change that makes the import work on several articles at once.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": null,
+          "impact": 1,
+          "source_quote": "Tomorrow I'll roll out the change that makes the import work on several articles at once.",
+          "skills": [],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "plan-parallel-import"}]
+        }
+      ],
+      "pending": [
+        {"item": "typo-fix-live", "kind": "outcome", "question": "Have support tickets about not finding articles gone down since the typo fix?", "status": "answered", "times_asked": 1, "answer_text": "A little, support said there are fewer 'I can't find it' tickets, but it's early to put a number on it."}
+      ]
+    },
+    {
+      "date": "2026-10-20",
+      "mode": "guided",
+      "energy": 5,
+      "mood_word": "proud",
+      "turns": [
+        {"role": "assistant", "text": "Hi Ayan. Last time I asked whether support tickets about missing articles went down after the typo fix. Any news?"},
+        {"role": "user", "text": "A little, support said there are fewer 'I can't find it' tickets, but it's early to put a number on it."},
+        {"role": "assistant", "text": "Fair enough. How did the import rollout go?"},
+        {"role": "user", "text": "Really well actually. I changed the nightly import to work on several articles at once, and it's about 50% faster now, so new articles are in search before people start work."},
+        {"role": "assistant", "text": "That's a big win. Was anything tricky about it?"},
+        {"role": "user", "text": "Yeah, I learned the hard way that if I send too many at once, the article feed starts refusing requests. So I kept it to 5 at a time."}
+      ],
+      "day_summary": "Support said there are fewer 'I can't find it' tickets since the typo fix, though it's early for a number. You rolled out the faster nightly import, which works on several articles at once and is about 50% faster, so new articles are in search before people start work. You learned that the article feed refuses too many requests at once, so you kept it to 5 at a time.",
+      "items": [
+        {
+          "key": "parallel-import",
+          "kind": "achievement",
+          "status": "active",
+          "project": "Article Import",
+          "title": "Made the nightly article import about 50% faster",
+          "what": "Changed the nightly article import to handle several articles at once; it's about 50% faster, so new articles are in search before the workday starts.",
+          "how": "Processed articles in parallel, 5 at a time so the article feed doesn't refuse requests.",
+          "result": "New articles are in search before people start work.",
+          "bullet": "Made the nightly help-article import about 50% faster by processing several articles at once, so new articles reach search before the workday starts",
+          "ownership": "did",
+          "quantifiable": "yes",
+          "scope": "team",
+          "impact": 3,
+          "source_quote": "I changed the nightly import to work on several articles at once, and it's about 50% faster now",
+          "skills": ["Python", "Performance"],
+          "metrics": [
+            {"name": "nightly import time", "category": "time", "unit": "%", "baseline": null, "final": null, "delta_pct": -50, "better_when": "lower", "period": "per-day", "approx": true, "source_text": "it's about 50% faster now"}
+          ],
+          "links": [{"kind": "continues", "to": "plan-import-rollout"}, {"kind": "continues", "to": "import-slow-cause"}]
+        },
+        {
+          "key": "learn-feed-limit",
+          "kind": "learning",
+          "status": "active",
+          "project": "Article Import",
+          "title": "The article feed refuses too many requests at once",
+          "what": "Learned that sending too many requests at once makes the article feed refuse them, so the import now runs 5 at a time.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": "individual",
+          "impact": 1,
+          "source_quote": "if I send too many at once, the article feed starts refusing requests",
+          "skills": [],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "parallel-import"}]
+        }
+      ],
+      "pending": [
+        {"item": "parallel-import", "kind": "metric", "question": "How long does the nightly import take now, in hours, compared with about 3 before?", "status": "dismissed", "times_asked": 1}
+      ]
+    },
+    {
+      "date": "2026-10-21",
+      "mode": "guided",
+      "energy": 4,
+      "mood_word": "satisfied",
+      "turns": [
+        {"role": "assistant", "text": "Hi Ayan. What stood out today?"},
+        {"role": "user", "text": "We finally ran the trip assistant through the test list with the ML team, it's 200 real traveller questions now. It got about 30 of them wrong, mostly baggage and visa questions. I went through each one and sent the ML team a list of what to fix in the prompts."},
+        {"role": "assistant", "text": "That's careful work. What else did you get done?"},
+        {"role": "user", "text": "I built a small demo page so the product team can try the assistant themselves. It shows which help article each answer came from, so they can check it."},
+        {"role": "assistant", "text": "Nice. Anything else from today?"},
+        {"role": "user", "text": "I also helped a teammate set up a dashboard for search traffic, mostly just pairing with them on it."}
+      ],
+      "day_summary": "You and the ML team ran the trip assistant through 200 real traveller questions, and it got about 30 wrong, mostly on baggage and visas. You went through each one and sent the ML team a list of prompt fixes. You also built a small demo page so the product team can try the assistant and see where each answer came from, and helped a teammate set up a search traffic dashboard.",
+      "items": [
+        {
+          "key": "assistant-tested",
+          "kind": "achievement",
+          "status": "active",
+          "project": "Trip Assistant",
+          "title": "Tested the trip assistant on 200 real traveller questions",
+          "what": "Ran the trip assistant through 200 real traveller questions with the ML team; it got about 30 wrong, mostly baggage and visa questions.",
+          "how": "Went through each wrong answer and sent the ML team a list of what to fix in the prompts.",
+          "result": null,
+          "bullet": "Tested the trip assistant on 200 real traveller questions with the ML team, flagging about 30 wrong answers, mostly on baggage and visas, for prompt fixes",
+          "ownership": "did",
+          "quantifiable": "yes",
+          "scope": "team",
+          "impact": 3,
+          "source_quote": "It got about 30 of them wrong, mostly baggage and visa questions.",
+          "skills": ["Testing AI answers", "LLM evaluation"],
+          "metrics": [
+            {"name": "test questions answered wrong", "category": "quality", "unit": "questions", "baseline": null, "final": 30, "delta_pct": null, "better_when": "lower", "period": "one-time", "approx": true, "source_text": "It got about 30 of them wrong"}
+          ],
+          "links": [{"kind": "continues", "to": "assistant-test-questions"}]
+        },
+        {
+          "key": "assistant-demo-page",
+          "kind": "achievement",
+          "status": "active",
+          "project": "Trip Assistant",
+          "title": "Built a demo page for the product team to try the assistant",
+          "what": "Built a small demo page so the product team can try the trip assistant and see which help article each answer came from.",
+          "how": null,
+          "result": null,
+          "bullet": "Built a small demo page so the product team could try the trip assistant themselves and see which help article each answer came from",
+          "ownership": "did",
+          "quantifiable": "maybe",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "I built a small demo page so the product team can try the assistant themselves.",
+          "skills": ["React"],
+          "metrics": [],
+          "links": []
+        },
+        {
+          "key": "helped-search-dashboard",
+          "kind": "progress",
+          "status": "active",
+          "project": "Help Centre Search",
+          "title": "Helped a teammate set up a search traffic dashboard",
+          "what": "Helped a teammate set up a dashboard for search traffic, mostly by pairing with them.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": "helped",
+          "quantifiable": "no",
+          "scope": "team",
+          "impact": 1,
+          "source_quote": "I also helped a teammate set up a dashboard for search traffic",
+          "skills": ["Monitoring"],
+          "metrics": [],
+          "links": []
+        }
+      ],
+      "pending": [
+        {"item": "assistant-demo-page", "kind": "outcome", "question": "Did the product team try the demo page, and what did they think?", "status": "answered", "times_asked": 1, "answer_text": "Our product manager said it made this the easiest review they've had."}
+      ]
+    },
+    {
+      "date": "2026-10-22",
+      "mode": "guided",
+      "energy": 4,
+      "mood_word": "appreciated",
+      "turns": [
+        {"role": "assistant", "text": "Hi Ayan. Last time you'd just built the demo page. Did the product team try it?"},
+        {"role": "user", "text": "They did! Our product manager said it made this the easiest review they've had, and they want one for the next feature too."},
+        {"role": "assistant", "text": "That's lovely to hear. What else happened?"},
+        {"role": "user", "text": "My lead was on leave, so I ran the standup and the planning call for the first time. I was nervous but it went fine, we got through everything on time."},
+        {"role": "assistant", "text": "What's the one thing for tomorrow?"},
+        {"role": "user", "text": "Tomorrow I want to start load testing search before the holiday travel rush."}
+      ],
+      "day_summary": "The product team tried your demo page, and your product manager said it made this the easiest review they've had. With your lead on leave, you ran the standup and the planning call for the first time, and it went fine. Tomorrow you want to start load testing search before the holiday travel rush.",
+      "items": [
+        {
+          "key": "pm-praise-demo",
+          "kind": "praise",
+          "status": "active",
+          "project": "Trip Assistant",
+          "title": "Product manager called it the easiest review they've had",
+          "what": "The product manager said the demo page made this the easiest review they've had, and wants one for the next feature too.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "Our product manager said it made this the easiest review they've had",
+          "skills": [],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "assistant-demo-page"}]
+        },
+        {
+          "key": "covered-lead-standup",
+          "kind": "soft_skill",
+          "status": "active",
+          "project": null,
+          "title": "Ran the standup and planning call while the lead was on leave",
+          "what": "Ran the team's standup and planning call for the first time while the lead was on leave; got through everything on time.",
+          "how": null,
+          "result": "Both meetings finished on time.",
+          "bullet": "Ran the team's daily standup and planning call while the team lead was on leave, getting through everything on time",
+          "ownership": "did",
+          "quantifiable": "no",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "My lead was on leave, so I ran the standup and the planning call for the first time.",
+          "skills": ["Leadership"],
+          "metrics": [],
+          "links": []
+        },
+        {
+          "key": "plan-search-load-test",
+          "kind": "plan",
+          "status": "active",
+          "project": "Help Centre Search",
+          "title": "Start load testing search before the holiday rush",
+          "what": "Plan to start load testing search before the holiday travel rush.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": null,
+          "impact": 1,
+          "source_quote": "Tomorrow I want to start load testing search before the holiday travel rush.",
+          "skills": [],
+          "metrics": [],
+          "links": []
+        }
+      ],
+      "pending": []
+    },
+    {
+      "date": "2026-10-23",
+      "mode": "guided",
+      "energy": 3,
+      "mood_word": "tired",
+      "turns": [
+        {"role": "assistant", "text": "Hi Ayan, end of the week. How did today go?"},
+        {"role": "user", "text": "Tiring but okay. I started the search load test and it held steady up to 300 searches a second. I'll push it further next week."},
+        {"role": "assistant", "text": "Good start. What else happened?"},
+        {"role": "user", "text": "I also changed the search alert thresholds, because we kept getting pinged for problems that fixed themselves. And I reviewed some of the changes for moving search to the new servers, that's more of a team effort."},
+        {"role": "assistant", "text": "Anything you want to remember for next week?"},
+        {"role": "user", "text": "Just finish the load test next week, and maybe take it easy this weekend."}
+      ],
+      "day_summary": "You started the search load test, and it held steady up to 300 searches a second. You changed the search alert thresholds so the team stops getting pinged for problems that fix themselves, and reviewed some of the changes for moving search to the new servers. Next week you want to finish the load test.",
+      "items": [
+        {
+          "key": "search-load-test-progress",
+          "kind": "progress",
+          "status": "active",
+          "project": "Help Centre Search",
+          "title": "Load tested search up to 300 searches a second",
+          "what": "Started the search load test; search held steady up to 300 searches a second.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": "did",
+          "quantifiable": "yes",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "I started the search load test and it held steady up to 300 searches a second.",
+          "skills": ["Load testing"],
+          "metrics": [
+            {"name": "searches per second without slowing down", "category": "throughput", "unit": "searches/s", "baseline": null, "final": 300, "delta_pct": null, "better_when": "higher", "period": null, "approx": false, "source_text": "it held steady up to 300 searches a second"}
+          ],
+          "links": [{"kind": "continues", "to": "plan-search-load-test"}]
+        },
+        {
+          "key": "search-alert-tuning",
+          "kind": "achievement",
+          "status": "draft",
+          "project": "Help Centre Search",
+          "title": "Tuned search alert thresholds to cut noisy pings",
+          "what": "Changed the search alert thresholds because the team kept getting pinged for problems that fixed themselves.",
+          "how": null,
+          "result": null,
+          "bullet": "Tuned the search alert thresholds so the team stopped getting pinged for problems that fixed themselves",
+          "ownership": "did",
+          "quantifiable": "yes",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "I also changed the search alert thresholds, because we kept getting pinged for problems that fixed themselves.",
+          "skills": ["Monitoring"],
+          "metrics": [],
+          "links": []
+        },
+        {
+          "key": "search-servers-review",
+          "kind": "progress",
+          "status": "draft",
+          "project": "Help Centre Search",
+          "title": "Reviewed changes for moving search to new servers",
+          "what": "Reviewed some of the changes for moving search to the new servers, as part of a team effort.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": "team",
+          "quantifiable": "maybe",
+          "scope": "team",
+          "impact": 2,
+          "source_quote": "I reviewed some of the changes for moving search to the new servers",
+          "skills": ["Code review"],
+          "metrics": [],
+          "links": []
+        },
+        {
+          "key": "plan-finish-load-test",
+          "kind": "plan",
+          "status": "active",
+          "project": "Help Centre Search",
+          "title": "Finish the search load test",
+          "what": "Plan to finish the search load test next week.",
+          "how": null,
+          "result": null,
+          "bullet": null,
+          "ownership": null,
+          "quantifiable": "no",
+          "scope": null,
+          "impact": 1,
+          "source_quote": "Just finish the load test next week",
+          "skills": [],
+          "metrics": [],
+          "links": [{"kind": "continues", "to": "search-load-test-progress"}]
+        }
+      ],
+      "pending": [
+        {"item": "search-alert-tuning", "kind": "metric", "question": "How many search alerts fired per week before and after you changed the thresholds?", "status": "open", "times_asked": 0},
+        {"item": "search-servers-review", "kind": "ownership", "question": "What was your part in moving search to the new servers, beyond reviewing some of the changes?", "status": "open", "times_asked": 0}
+      ]
+    }
+  ]
+}

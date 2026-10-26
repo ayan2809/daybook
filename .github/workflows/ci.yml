@@ -16,6 +16,9 @@ jobs:
       - run: uv run ruff check daybook tests scripts
       - run: uv run ruff format --check daybook tests scripts
       - run: uv run pytest -q
+      - name: seed + eval data check
+        working-directory: .
+        run: python3 evals/check_data.py
       - name: evals (fake mode)
         working-directory: .
         run: uv run --project backend python -m evals run --suite all --mode fake

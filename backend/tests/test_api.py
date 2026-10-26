@@ -84,7 +84,7 @@ def test_demo_today_and_reflection(client):
     r = turn(
         client,
         sid,
-        "I finished the load test: the retry service held up to 450 requests per second.",
+        "I finished the load test: search held up at 450 searches a second.",
     )
     r = turn(client, sid, "stop")
     assert r["ended"]
@@ -129,10 +129,10 @@ def test_fix_by_voice_inside_guided_session(client):
     ]["id"]
     turn(client, sid, "skip")
     turn(client, sid, "skip")
-    r = turn(client, sid, "Actually, that migration last Tuesday was 40% faster, not 50.")
+    r = turn(client, sid, "Actually, the article import last Tuesday was 40% faster, not 50.")
     assert r["pending_action"]["kind"] in ("confirm_item", "pick_item"), r
     if r["pending_action"]["kind"] == "pick_item":
-        r = turn(client, sid, "the migration one")
+        r = turn(client, sid, "the import one")
     else:
         r = turn(client, sid, "Yes, that one.")
     assert r["pending_action"]["kind"] == "confirm_edit", r
@@ -147,7 +147,7 @@ def test_ask_and_abstain(client):
     r = client.post(
         "/api/ask",
         headers={**H, **NOW},
-        json={"question": "What did I do on the webhook retry service?"},
+        json={"question": "What did I do on the trip assistant?"},
     ).json()
     assert not r["abstained"] and r["citations"]
     assert all(str(c["item_id"]) in r["refs"] for c in r["citations"])
@@ -170,12 +170,12 @@ def test_typed_pending_answer_and_timeline_edit(client):
     assert r.json()["item"]["metrics"][0]["baseline"] == 40
     iid = r.json()["item"]["id"]
     r = client.patch(
-        f"/api/memories/{iid}", headers=H, json={"fields": {"title": "Tuned retry alerts"}}
+        f"/api/memories/{iid}", headers=H, json={"fields": {"title": "Tuned search alerts"}}
     )
-    assert r.json()["item"]["title"] == "Tuned retry alerts"
+    assert r.json()["item"]["title"] == "Tuned search alerts"
     v1 = client.get(f"/api/memories/{iid}").json()["versions"][-1]["version"]
     r = client.post(f"/api/memories/{iid}/restore", headers=H, json={"version": v1})
-    assert r.json()["item"]["title"] != "Tuned retry alerts"
+    assert r.json()["item"]["title"] != "Tuned search alerts"
     assert client.post(f"/api/memories/{iid}/hide", headers=H).json()["item"]["status"] == "hidden"
 
 

@@ -41,12 +41,13 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
 
 ## Content to review
 
-- [ ] **RQ-20 · Demo persona + eval data** (written by a subagent, validated by script, not yet read by
-  a human): `data/seed/meera.json` (10 days, 30 items, 9 pending of which 2 open),
-  `evals/data/{router,extraction,retrieval,ask}.jsonl` (61 / 15 / 30 / 30 lines). Plan 13.4 says Ayan
-  reviews eval inputs before the first live eval run. Choices to check: lag metrics use category
-  `other` with unit `messages`; "about 2 million" is stored expanded (2000000, approx); the last day's
-  plan says "next time" because 10-23 is a Friday.
+- [ ] **RQ-20 · Demo persona + eval data** (rewritten 2026-10-25, DB-25; validated by
+  `evals/check_data.py`, not yet read by a human): `data/seed/demo-persona.json` (Ayan at Kestrel
+  Travel, fictional: 10 days, 30 items, 9 pending of which 2 open), `evals/data/{router,extraction,
+  retrieval,ask}.jsonl` (61 / 15 / 30 / 30 lines). Plan 13.4 says Ayan reviews eval inputs before the
+  first live eval run. Check: the story reads naturally and nothing in it is too close to your real
+  work; "last week" in retrieval means Oct 19–23 (today = Sat 24th); the last day's plan says "next
+  week" because 10-23 is a Friday.
 
 ## Cost sign-offs
 

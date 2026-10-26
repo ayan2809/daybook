@@ -52,6 +52,9 @@ vapid: ## generate VAPID keys for Web Push into .env
 build-web: ## production build of the PWA
 	cd frontend && npm run build
 
+check-data: ## check the demo seed and eval inputs against each other
+	python3 evals/check_data.py
+
 eval: ## eval suites in fake mode (plumbing only; free)
 	uv run --project backend python -m evals run --suite all --mode fake
 

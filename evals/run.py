@@ -180,7 +180,7 @@ def _owner():
 
 
 async def _seed_vault(app):
-    """The Meera vault (dates as in meera.json, so `today` = 2026-10-24 matches), embedded with the
+    """The demo-persona vault (dates as in demo-persona.json, so `today` = 2026-10-24 matches), embedded with the
     app's embedder. Returns (vault, key → item id)."""
     from daybook.engine.demo import build_seed_db
     from daybook.memory import db, retrieval

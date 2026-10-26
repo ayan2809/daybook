@@ -1,5 +1,5 @@
-"""Demo mode for judges (plan 15): a sandbox seeded with Meera, dates shifted so her last
-reflection is always "yesterday", caps, suggested replies, and replay mode.
+"""Demo mode for judges (plan 15): a sandbox seeded with the demo persona (Ayan, made-up data),
+dates shifted so the last reflection is always "yesterday", caps, suggested replies, and replay mode.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from daybook.memory import db, repo, retrieval
 from daybook.settings import REPO_ROOT
 
 SEED_DB = REPO_ROOT / "data" / "seed" / "demo-memory.db"
-SEED_JSON = REPO_ROOT / "data" / "seed" / "meera.json"
+SEED_JSON = REPO_ROOT / "data" / "seed" / "demo-persona.json"
 REPLAY_JSON = REPO_ROOT / "data" / "seed" / "replay.json"
 _DATE = re.compile(r"\b20\d\d-\d\d-\d\d\b")
 
@@ -27,13 +27,13 @@ SUGGESTIONS = {
     "close_loops": [
         "It went from about 40 alerts a week to around 6.",
         "Not sure yet, I'll check tomorrow.",
-        "I wrote the migration plan and did most of the reviews.",
+        "I wrote the move plan for search and did most of the reviews.",
     ],
     "explore": [
-        "I finished the load test: the retry service held up to 450 requests per second.",
-        "Also did some stuff on the ledger thing.",
-        "Spent an hour pairing with the intern on her first on-call shift.",
-        "Actually, that migration last Tuesday was 40% faster, not 50.",
+        "I finished the load test: search held up at 450 searches a second.",
+        "Also did some stuff on the assistant.",
+        "Spent an hour helping the junior with their first on-call shift.",
+        "Actually, the article import last Tuesday was 40% faster, not 50.",
     ],
     "wrap": ["No, that's everything.", "Let's wrap up."],
     "edit": ["It was 40%, not 50%.", "Yes, that one.", "Yes."],
@@ -146,7 +146,7 @@ def replay_payload() -> dict:
 
 
 def build_seed_db(path: Path) -> tuple[sqlite3.Connection, dict[str, int]]:
-    """Build the demo vault from meera.json (no LLM). Embeddings are added by `index()` later."""
+    """Build the demo vault from demo-persona.json (no LLM). Embeddings are added by `index()` later."""
     data = json.loads(SEED_JSON.read_text())
     path.unlink(missing_ok=True)
     conn = db.connect(path)

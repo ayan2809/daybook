@@ -1,4 +1,4 @@
-"""Build data/seed/demo-memory.db from data/seed/meera.json (plan 15).
+"""Build data/seed/demo-memory.db from data/seed/demo-persona.json (plan 15).
 
 Embeddings come from the configured embedder (DAYBOOK_EMBED=fake|gemini). The demo must be seeded
 with the same embedder the app uses, or vector search is skipped for those docs.

@@ -31,7 +31,7 @@ Daybook is a voice-first daily work reflection app (hackathon: No Hands, the Wis
 backend/daybook/   main.py worker.py settings.py api/ engine/ agents/ prompts/ memory/ voice/ push/ obs/ llm/ storage/
 backend/tests/     pytest, offline
 frontend/          the PWA
-data/seed/         meera.json (demo persona), built demo-memory.db (git-ignored except seed)
+data/seed/         demo-persona.json (demo persona: Ayan, made-up data), built demo-memory.db (git-ignored except seed)
 evals/             eval data + runner
 docs/              STATUS, API, DECISIONS, REVIEW_QUEUE, VOICE_PROMPTS
 ```
