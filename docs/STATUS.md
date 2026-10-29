@@ -37,6 +37,7 @@ Time travel: header `X-Debug-Now` (local and demo only), or `localStorage["daybo
 | Unit + flow tests (`make test`) | 25 pass: schema/validation/deltas (A1–A3), versions and restore, pending lifecycle (A7), vault If-Match (A8), hybrid retrieval + numpy fallback (A10), guided session end to end, idempotency + time_up (A9, A6), wrap timing + stop, safety path with no LLM call (A11), auth/origin rules (A14), demo seed + caps + replay (A15, L1, L6), fix-by-voice (F1–F2), Ask abstention (I2), typed pending answer (E7), Timeline edit/restore/hide (F7), settings, reminder tick (A16), soft-idle cleanup (DB-13). |
 | Browser (headless Chromium, 390×844, Playwright from the scratchpad) | Landing → demo → Today (2 pending) → guided reflection (pending answer + confirm, defer, new work, suggestion chip, wrap) → summary → Timeline → item → Ask (citations + CFO abstention) → Remind me → Settings: **all pass, zero console/API errors**, in fake mode **and** live Gemini mode. |
 | Live terminal session | Correct items, exact numbers (1,200 → under 100, delta by code), XYZ bullets, promised question created, no guard failures, $0.016. |
+| **Prod** smoke test (2026-10-29, CloudFront → Lambda, ap-south-1) | 20/20 (same flow as below, finalize on the worker Lambda). Edge: direct Function URL → 403, mutating without `X-Requested-With` → 403, SPA routes → index.html, API 404 stays JSON, `sw.js` no-cache, hashed assets immutable, HSTS + nosniff. Cold start: api 3.1 s, worker 1.5 s; warm health ≈ 0.2 s. Lambda's `sqlite3` has no `enable_load_extension`, so vector search uses the numpy fallback (fine at this size); FTS5 works. |
 | Live HTTP smoke test (2026-10-29, Gemini + ElevenLabs Sarah, new persona) | 20/20: demo start → Today (Ayan, 2 open) → guided session (metric read-back + confirm, ownership answer, new work, wrap naming tomorrow's question) → MP3 audio on every reply → finalize (3 items, 1 new pending) → Ask with citations → CFO abstention → Timeline 31 items. Turns 2.4–4.7 s. |
 | Live demo run in the browser | Pending loop, deferral, follow-ups, wrap naming the open question; finalize + judge; whole run incl. Gemini voice and Ask ≈ $0.04. |
 | Lint | `ruff check` + `ruff format --check` clean; `tsc --noEmit` clean; `npm run build` OK. |
@@ -69,7 +70,7 @@ Legend: ✅ done and tested · 🟡 partial · ⬜ not started
 | Frontend PWA | ✅ | all screens; browser-tested flows above; not yet on a real phone |
 | Eval runner + data | 🟡 | fake mode in CI; live run waits for sign-off (RQ-05); `sim` suite (P1) not built |
 | CI (GitHub Actions) | ✅ | `.github/workflows/ci.yml`: ruff, pytest, fake evals, tsc, build |
-| Infra (CloudFormation, deploy scripts, Lambda zip) | 🟡 | go-ahead 2026-10-29. Templates + scripts done (DB-27). `daybook-storage` stack **deployed**; app stack waits for `make secrets` (RQ-12) |
+| Infra (CloudFormation, deploy scripts, Lambda zip) | 🟡 | **Live: https://d2u2cnea4n3vkc.cloudfront.net** (2026-10-29, `5f4eaa7`). Both stacks up, validated end to end; schedules off until the deployer policy update (RQ-13) |
 
 ## Next up (in order)
 

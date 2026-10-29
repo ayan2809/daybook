@@ -39,10 +39,11 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
 - [ ] **RQ-09 · Ownership wording in bullets.** Live deep pass turned "helping a friend" into "Mentored…".
   Prompt v2 forbids it (DB-18); confirm with the live extraction eval (RQ-05).
 
-- [ ] **RQ-12 · Put the keys in SSM, then deploy.** The agent may not write to the secret store, so run
+- [x] **RQ-12 · Put the keys in SSM, then deploy.** The agent may not write to the secret store, so run
   `make owner-key` (if you want owner sign-in in prod), then `make secrets` (prints names only), then
   `make deploy`. *Assumed:* the app stack isn't created until the secrets exist (it would otherwise
   run with the dev signing key).
+  **Done 2026-10-29:** Ayan ran it; 10 parameters in SSM; prod validated 20/20.
 - [ ] **RQ-13 · Deployer policy update.** `infra/iam/daybook-deployer-policy.json` now also allows
   EventBridge Scheduler on `schedule/default/daybook-*`, `iam:PassRole` to `scheduler.amazonaws.com`,
   and Budgets on `budget/daybook-*`. Re-apply it to `ayan-mac` from an admin login, then
@@ -53,8 +54,10 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
 
 - [ ] **RQ-10 · Spikes S2, S3, S4** (iPhone push + Watch, Wispr Flow keyboard in the installed PWA,
   audio playback after one tap). Need a deployed HTTPS URL, so they wait for the deploy go-ahead.
-- [ ] **RQ-11 · Spikes S1, S6, S7** (sqlite-vec on Lambda, CloudFront → Function URL, deployer policy).
-  Also wait for the deploy go-ahead.
+- [x] **RQ-11 · Spikes S1, S6, S7** (sqlite-vec on Lambda, CloudFront → Function URL, deployer policy).
+  **Done 2026-10-29:** S1: Lambda's Python `sqlite3` can't load extensions, so search uses the numpy
+  fallback (tested, fine at this size); FTS5 works. S6: CloudFront → Function URL with the origin header
+  works, direct calls get 403. S7: the deployer policy deploys both stacks; Scheduler/Budgets wait on RQ-13.
 
 ## Content to review
 
