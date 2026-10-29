@@ -617,7 +617,7 @@ tests). On AWS it will invoke the worker Lambda asynchronously. Jobs live in `wo
 |---|---|
 | `finalize_session` | §9 |
 | `session_judge` | scores the finished conversation (asked one question at a time, no advice, numbers right, wrap named the open questions…) and stores the scores on the session; Admin flags low scores |
-| `reminder_tick` | every minute locally (every 15 min on AWS, from EventBridge): for each reminder day, a first nudge at your time and an optional second nudge; skipped if you already reflected; logged per day so a nudge is sent once; endpoints answering `410 Gone` are deleted. Body: "How did today go? 2 numbers to confirm from yesterday." |
+| `reminder_tick` | every minute locally for every account; on AWS each account's own two EventBridge schedules fire at its exact times and name the account (`push/schedules.py`, DB-29): for each reminder day, a first nudge at your time and an optional second nudge; skipped if you already reflected; logged per day so a nudge is sent once; endpoints answering `410 Gone` are deleted. Body: "How did today go? 2 numbers to confirm from yesterday." |
 | `cleanup_stale_sessions` | ends sessions that were hidden for over 120 s with no newer turn, or are over limit + 15 min; retries queued or failed finalizes |
 
 **About the `idle` signal (DB-13).** `pagehide` sends `end` with reason `idle` through
@@ -631,11 +631,13 @@ reflection short.
 
 `engine/budget.py`. Counters are small JSON blobs keyed by the IST day.
 
-- **`SpendBreaker`** has a $2.00 daily budget, of which the demo may use at most $1.40.
-  `status(role)` returns:
+- **`SpendBreaker`** has a $2.00 daily budget, of which the demo may use at most $1.40 and all
+  `user` accounts together $1.00, with $0.30 a day for any one of them (DB-29), so strangers can't
+  use up the owner's budget. `status(user)` returns:
   - `ok`
   - `demo_replay` for demo users over budget
-  - `over` for the owner, which turns voice off and queues finalize
+  - `over` for an account, which turns voice off and queues finalize; a `user` over its cap can't
+    start a new session (429 `budget`)
 - **`DemoCaps`:** each sandbox gets 2 sessions and 10 Ask questions. Across all sandboxes the daily
   limit is 15 sessions and 30 asks. Past a cap, the demo shows **replay mode**, a recorded session.
 - **Per session:** caps on turns, input tokens and TTS characters.
@@ -680,17 +682,29 @@ Cost per call comes from `obs/pricing.yaml`. Prices were last checked on 2026-10
 
 - **Errors** always come back as `{"error": {"code", "message", ...}}`, including validation and
   unhandled errors.
-- **Owner sign-in:** a long random key, stored only as a hash (`make owner-key`). It is compared in
-  constant time, and login is rate limited to 5 per minute. The session is a signed cookie
-  `db_session` (itsdangerous; `HttpOnly`, `Secure`, `SameSite=Strict`), valid 180 days for the
-  owner and 24 hours for a demo.
+- **Accounts (DB-29).** Three roles: `owner` (Ayan: his vault `users/owner/` and the Admin pages),
+  `user` (anyone else who signs in with Google: a private vault `users/<uid>/`) and `demo`.
+  - **Google sign-in is also sign-up.** The landing page shows Google's button (Identity Services,
+    `components/GoogleButton.tsx`); it returns an ID token, and `POST /api/auth/google` checks it
+    with `google-auth` (Google's keys, audience = `GOOGLE_CLIENT_ID`, expiry, issuer) and requires a
+    verified email (`engine/accounts.py`). An email in `OWNER_EMAILS` maps to the owner. Anyone
+    else gets uid `g` + 24 hex of sha256(`google:<sub>`), so no Google id appears in a key, and an
+    `accounts/<uid>.json` record (email, name). `ALLOWED_EMAILS` (empty = anyone) and
+    `MAX_ACCOUNTS` (25) limit sign-ups.
+  - **Owner key** (a backup way in): a long random key, stored only as a hash (`make owner-key`),
+    compared in constant time.
+  - Logins are rate limited to 5 per minute. The session is a signed cookie `db_session`
+    (itsdangerous; `HttpOnly`, `Secure`, `SameSite=Strict`) holding the role, uid and email, valid
+    180 days for accounts and 24 hours for a demo.
 - **CSRF:** every mutating request needs `X-Requested-With: daybook`. The one exception is
   `POST /sessions/{id}/end`, because `sendBeacon` can't set headers (DB-11).
 - **Origin lock:** when `ORIGIN_VERIFY` is set, requests must carry the secret `X-Origin-Verify`
   header that CloudFront adds. This stops anyone calling the Lambda URL directly.
 - **Rate limits:** token buckets, 120 requests a minute with a burst of 40.
-- **Roles:** `owner_only` guards exports, data delete and Admin. Demo users can never see the
-  owner's data, because each role has its own blob prefix.
+- **Roles:** `account_only` (owner or user) guards push, exports and data delete; `owner_only`
+  guards Admin. Every request reads and writes only the signed-in user's own prefix, so no account
+  (or demo) can reach another's data. Deleting data as a `user` also removes the account record and
+  its reminder schedules.
 - **Time travel:** `X-Debug-Now` works only locally and for demo users.
 - **Prompt injection:** the Researcher flags it, the agenda redirects, the guards still run, and
   the user's text can never trigger a write without the confirm flow.
@@ -729,6 +743,7 @@ Vite 8, React 19, TypeScript, react-router 8, lucide-react icons and vite-plugin
 | `/remind` | quick reminder of recent work |
 | `/settings` | reminders and push, session length, voice, exports (owner), delete data |
 | `/admin`, `/admin/sessions/:id` | owner-only dashboards |
+| `/` (signed out) | landing page: Google sign-in (also sign-up), the demo, an owner-key link |
 
 The Reflect screen (`screens/reflect/Reflect.tsx`) works like this:
 
@@ -760,6 +775,8 @@ users/owner/memory.db                    the owner's vault
 users/owner/sessions/{sid}.json          short-term memory per session
 users/owner/active.json                  pointer to the running session
 users/owner/reminder-log/{date}.json     which nudges were sent today
+users/{uid}/…                            the same for each Google account (+ spend/{IST date}.json)
+accounts/{uid}.json                      a Google account: email, name, created_at
 demo/{sandbox}/memory.db | sessions/ | caps.json      one prefix per demo sandbox
 traces/{uid}/{date}/{sid}/{seq}.json     per-turn traces
 traces/{uid}/{date}/jobs/{job}-{id}.json finalize / judge / ask traces

@@ -102,50 +102,64 @@ async def test_hidden_session_ends_after_two_minutes_unless_a_turn_follows(tmp_p
     assert st.load(app.store, OWNER.prefix, s.id)[0].status == "finalized"
 
 
-# DB-27: exact reminder schedules instead of a 15-minute tick
+# DB-27, DB-29: exact per-account reminder schedules instead of a 15-minute tick
 class FakeScheduler:
-    def __init__(self):
-        self.updates = []
+    class exceptions:  # noqa: N801 (mirrors boto3's client.exceptions)
+        class ResourceNotFoundException(Exception):
+            pass
 
-    def get_schedule(self, Name):
-        return {
-            "Name": Name,
-            "Arn": f"arn:aws:scheduler:x:1:schedule/default/{Name}",
-            "GroupName": "default",
-            "ScheduleExpression": "cron(0 19 ? * MON-FRI *)",
-            "FlexibleTimeWindow": {"Mode": "OFF"},
-            "Target": {
-                "Arn": "arn:worker",
-                "RoleArn": "arn:role",
-                "Input": '{"job":"reminder_tick"}',
-            },
-            "State": "ENABLED",
-        }
+    def __init__(self):
+        self.schedules: dict[str, dict] = {}
+        self.calls: list[tuple[str, str]] = []
 
     def update_schedule(self, **kw):
-        self.updates.append(kw)
+        if kw["Name"] not in self.schedules:
+            raise self.exceptions.ResourceNotFoundException(kw["Name"])
+        self.calls.append(("update", kw["Name"]))
+        self.schedules[kw["Name"]] = kw
+
+    def create_schedule(self, **kw):
+        self.calls.append(("create", kw["Name"]))
+        self.schedules[kw["Name"]] = kw
+
+    def delete_schedule(self, Name):
+        if Name not in self.schedules:
+            raise self.exceptions.ResourceNotFoundException(Name)
+        self.calls.append(("delete", Name))
+        del self.schedules[Name]
 
 
 def test_reminder_schedules():
-    from daybook.push.schedules import cron_for, sync_reminder_schedules
+    from daybook.push.schedules import cron_for, delete_reminder_schedules, sync_reminder_schedules
 
     assert cron_for("19:00", [1, 2, 3, 4, 5]) == "cron(0 19 ? * MON,TUE,WED,THU,FRI *)"
     assert cron_for("07:30", [7, 6, 6]) == "cron(30 7 ? * SAT,SUN *)"
     fake = FakeScheduler()
+    arns = {"worker_arn": "arn:worker", "role_arn": "arn:role"}
     rem = {"enabled": True, "time": "18:45", "days": [1, 3], "second_nudge": False}
-    out = sync_reminder_schedules(["first", "second"], rem, "Asia/Kolkata", client=fake)
-    assert [o["state"] for o in out] == ["ENABLED", "DISABLED"]
-    first = fake.updates[0]
+    out = sync_reminder_schedules("gabc", rem, "Asia/Kolkata", client=fake, **arns)
+    # the first nudge is created; the disabled second one isn't created just to be switched off
+    assert fake.calls == [("create", "daybook-reminder-gabc-first")]
+    assert [o["state"] for o in out] == ["ENABLED"]
+    first = fake.schedules["daybook-reminder-gabc-first"]
     assert first["ScheduleExpression"] == "cron(45 18 ? * MON,WED *)"
     assert first["ScheduleExpressionTimezone"] == "Asia/Kolkata"
-    # UpdateSchedule replaces everything: the target and window must be sent back unchanged
-    assert first["Target"]["Input"] == '{"job":"reminder_tick"}'
-    assert first["FlexibleTimeWindow"] == {"Mode": "OFF"} and "Arn" not in first
-    sync_reminder_schedules(["first"], {**rem, "enabled": False}, "Asia/Kolkata", client=fake)
-    assert fake.updates[-1]["State"] == "DISABLED"
+    assert first["Target"]["Input"] == '{"job": "reminder_tick", "uid": "gabc"}'
+    sync_reminder_schedules(
+        "gabc", {**rem, "second_nudge": True}, "Asia/Kolkata", client=fake, **arns
+    )
+    assert ("update", "daybook-reminder-gabc-first") in fake.calls
+    assert fake.schedules["daybook-reminder-gabc-second"]["State"] == "ENABLED"
+    sync_reminder_schedules("gabc", {**rem, "enabled": False}, "Asia/Kolkata", client=fake, **arns)
+    assert {s["State"] for s in fake.schedules.values()} == {"DISABLED"}
+    delete_reminder_schedules("gabc", client=fake)
+    delete_reminder_schedules("gabc", client=fake)  # already gone: no error
+    assert fake.schedules == {}
 
 
 def test_settings_save_moves_schedules(tmp_path, monkeypatch):
+    import hashlib
+
     from fastapi.testclient import TestClient
 
     from daybook.engine.app import set_app
@@ -153,36 +167,36 @@ def test_settings_save_moves_schedules(tmp_path, monkeypatch):
     from daybook.push import schedules
 
     calls = []
-    monkeypatch.setattr(schedules, "sync_reminder_schedules", lambda *a, **k: calls.append(a) or [])
-    import hashlib
-
+    monkeypatch.setattr(
+        schedules, "sync_reminder_schedules", lambda *a, **k: calls.append((a, k)) or []
+    )
     app = make_app(
         tmp_path,
-        reminder_schedules="daybook-reminder-first,daybook-reminder-second",
+        scheduler_role_arn="arn:role",
+        worker_function_arn="arn:worker",
         owner_key_hash=hashlib.sha256(b"k3y").hexdigest(),
     )
     set_app(app)
     try:
+        h = {"X-Requested-With": "daybook"}
         with TestClient(api) as c:
-            c.post("/api/demo/start", headers={"X-Requested-With": "daybook"})
-            r = c.put(
-                "/api/settings",
-                headers={"X-Requested-With": "daybook"},
-                json={"reminder": {"enabled": True, "time": "20:00"}},
-            )
+            c.post("/api/demo/start", headers=h)
+            r = c.put("/api/settings", headers=h, json={"reminder": {"enabled": True}})
             assert r.status_code == 200
-            assert calls == []  # a demo user never moves the owner's schedules
+            assert calls == []  # a demo never creates schedules
         with TestClient(api) as c:
-            h = {"X-Requested-With": "daybook"}
             assert (
                 c.post("/api/auth/login", headers=h, json={"owner_key": "k3y"}).status_code == 200
             )
             c.put("/api/settings", headers=h, json={"voice": False})
             assert calls == []  # nothing about reminders changed
             c.put("/api/settings", headers=h, json={"reminder": {"enabled": True, "time": "20:00"}})
-            names, rem, tz = calls[0]
-            assert names == ["daybook-reminder-first", "daybook-reminder-second"]
-            assert rem["time"] == "20:00" and rem["enabled"] and tz == "Asia/Kolkata"
+            (uid, rem, tz), kw = calls[0]
+            assert uid == "owner" and rem["time"] == "20:00" and rem["enabled"]
+            assert tz == "Asia/Kolkata" and kw == {
+                "worker_arn": "arn:worker",
+                "role_arn": "arn:role",
+            }
     finally:
         set_app(None)
 

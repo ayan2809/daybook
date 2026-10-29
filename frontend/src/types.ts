@@ -1,6 +1,7 @@
 // Types from docs/API.md (the binding contract). Keep in sync with that file.
 
-export type Role = "owner" | "demo";
+// owner: Ayan (admin pages) · user: any other Google account, own private data · demo: sandbox
+export type Role = "owner" | "user" | "demo";
 export type Kind =
   | "achievement"
   | "progress"
@@ -204,6 +205,7 @@ export interface Features {
   voice: boolean;
   push: boolean;
   vapid_public_key: string | null;
+  google_client_id: string | null;
 }
 
 export interface Me {
@@ -211,6 +213,7 @@ export interface Me {
   settings: Settings | null;
   demo: DemoInfo | null;
   features: Features;
+  account: { email: string | null } | null;
 }
 
 export interface ReplayTurn extends Turn {
@@ -364,7 +367,7 @@ export interface AdminOverview {
   pending_resolution_rate: number | null;
   ask_abstain_rate: number | null;
   feedback: { up: number; down: number };
-  spend_today: { total: number; demo: number; owner: number; budget: number };
+  spend_today: { total: number; demo: number; owner: number; user: number; budget: number };
 }
 
 export interface AdminSessionRow {

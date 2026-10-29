@@ -19,6 +19,7 @@ export function SettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const isOwner = me?.role === "owner";
+  const isAccount = me?.role === "owner" || me?.role === "user";
 
   useEffect(() => {
     api.settings().then(setSettings, (err) => setError(errorMessage(err)));
@@ -168,9 +169,9 @@ export function SettingsScreen() {
         </>
       )}
 
-      {isOwner && <PushSection />}
+      {isAccount && <PushSection />}
 
-      {isOwner && (
+      {isAccount && (
         <Section title="Export">
           <div className="stack-sm">
             <a className="btn btn-ghost justify-start" href={exportUrls.resumeAsCode()} download>
@@ -187,11 +188,14 @@ export function SettingsScreen() {
       )}
 
       <Section title="Account">
-        {isOwner ? (
+        {isAccount ? (
           <div className="stack-sm">
-            <Link to="/admin" className="btn btn-ghost justify-start">
-              Admin
-            </Link>
+            {me?.account?.email && <p className="small muted">Signed in as {me.account.email}</p>}
+            {isOwner && (
+              <Link to="/admin" className="btn btn-ghost justify-start">
+                Admin
+              </Link>
+            )}
             <button className="btn btn-ghost justify-start" onClick={() => void signOut()}>
               <LogOut size={16} aria-hidden="true" /> Sign out
             </button>
@@ -211,7 +215,7 @@ export function SettingsScreen() {
         )}
       </Section>
 
-      {isOwner && <DeleteSection onDeleted={() => void signOut()} />}
+      {isAccount && <DeleteSection onDeleted={() => void signOut()} />}
 
       <Section title="About">
         <p className="small">
@@ -447,7 +451,7 @@ function DeleteSection({ onDeleted }: { onDeleted: () => void }) {
     <Section title="Delete all data">
       <form className="stack-sm" onSubmit={submit}>
         <p className="small">
-          This permanently deletes every reflection, memory and version. Export first if you want a copy.
+          This permanently deletes every reflection, memory and version, and a Google sign-in account with them. Export first if you want a copy.
         </p>
         <label className="field">
           <span>Type “delete” to confirm</span>

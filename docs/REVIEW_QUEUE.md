@@ -50,6 +50,15 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
   `DAYBOOK_SCHEDULES=true make deploy-backend` (and `DAYBOOK_ALERT_EMAIL=… ` for the budget alert).
   *Assumed:* until then, no reminder pushes and no nightly cleanup (opening Today still cleans up).
 
+- [ ] **RQ-14 · Google OAuth client (for sign-in, DB-29).** In Google Cloud Console → APIs & Services →
+  Credentials → Create OAuth client ID → *Web application*. Authorized JavaScript origins:
+  `https://d2u2cnea4n3vkc.cloudfront.net` and `http://localhost:5173` (no redirect URIs needed). OAuth
+  consent screen: External, app name Daybook, scopes `openid email profile` only. Then in `.env`:
+  `GOOGLE_CLIENT_ID=…apps.googleusercontent.com`, `OWNER_EMAILS=<your Google email>`, optionally
+  `ALLOWED_EMAILS=…` (empty = anyone can sign up, max 25). Run `make secrets` and
+  `make deploy`. *Assumed:* until then the landing page says Google sign-in isn't set up; the owner key
+  and the demo still work.
+
 ## Device / manual tests (can't be done by the agent)
 
 - [ ] **RQ-10 · Spikes S2, S3, S4** (iPhone push + Watch, Wispr Flow keyboard in the installed PWA,

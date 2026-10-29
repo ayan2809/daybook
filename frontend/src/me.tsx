@@ -17,7 +17,8 @@ const SIGNED_OUT: Me = {
   role: null,
   settings: null,
   demo: null,
-  features: { voice: false, push: false, vapid_public_key: null },
+  features: { voice: false, push: false, vapid_public_key: null, google_client_id: null },
+  account: null,
 };
 
 export function MeProvider({ children }: { children: ReactNode }) {

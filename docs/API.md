@@ -23,7 +23,7 @@ Frontend and backend both follow this file. Change it only together with both si
 | 409 | `time_up` | a turn after the time limit; the session has ended, go to the summary |
 | 409 | `session_ended` | a turn on an ended session |
 | 422 | `validation` | bad body |
-| 429 | `rate_limited` · `demo_cap` · `budget` | limits; `demo_cap` means use replay (`GET /api/demo/replay`) |
+| 429 | `rate_limited` · `demo_cap` · `budget` | limits; `demo_cap` means use replay (`GET /api/demo/replay`); `budget` on `POST /api/sessions` means a `user` account hit its daily cap |
 | 500/503 | `internal` · `unavailable` | |
 
 - **Time travel (dev and demo only):** header `X-Debug-Now: 2026-10-27T19:05:00+05:30` overrides "now".
@@ -101,7 +101,7 @@ interface Settings {
 ## Clarifications (2026-10-25)
 
 - Push payload (sent by the server, read by `sw.ts`): `{title, body, url}`.
-- All exports (`/api/export/*`) are owner-only. Demo users can `GET`/`PUT /api/settings`; a demo's
+- Exports, push and data delete are for any signed-in account (`owner` or `user`), never the demo; Admin is owner-only. Demo users can `GET`/`PUT /api/settings`; a demo's
   `reminder` changes are ignored.
 - `include_hidden=true` on `GET /api/memories` includes hidden items.
 - There's no read-aloud endpoint for Ask or Remind me yet (P1).
@@ -114,8 +114,9 @@ interface Settings {
 |---|---|---|
 | `GET /api/health` (`?warm=1` also loads the vault) | | `{ok: true, env, llm, tts}` |
 | `POST /api/auth/login` | `{owner_key}` | `{role: "owner"}` (sets cookie) · 401 on a bad key |
+| `POST /api/auth/google` | `{credential}` (the ID token from Google Identity Services) | `{role: "owner" \| "user"}` (sets cookie). The first sign-in creates the account (DB-29); an email in `OWNER_EMAILS` opens the owner's data. 401 bad token or unverified email · 403 `not_invited` (allowlist) · 403 `signups_closed` (`MAX_ACCOUNTS`) · 503 not configured |
 | `POST /api/auth/logout` | | `{ok: true}` |
-| `GET /api/me` | | `{role: Role \| null, settings: Settings \| null, demo: {sandbox_id, sessions_left, asks_left, replay_only: boolean} \| null, features: {voice: boolean, push: boolean, vapid_public_key: string \| null}}`. Signed out → `role: null` (200, not 401). |
+| `GET /api/me` | | `{role: Role \| null, settings: Settings \| null, demo: {sandbox_id, sessions_left, asks_left, replay_only: boolean} \| null, features: {voice: boolean, push: boolean, vapid_public_key: string \| null, google_client_id: string \| null}, account: {email: string \| null} \| null}`. `Role` is `"owner" \| "user" \| "demo"`. Signed out → `role: null` (200, not 401). |
 | `POST /api/demo/start` | | `{role: "demo", sandbox_id}` (sets cookie; new sandbox seeded with the demo persona) |
 | `GET /api/demo/replay` | | `{banner: string, turns: Turn[] (with `audio_url: string \| null`), summary: Summary}` |
 | `GET /api/demo/last-trace` | | the sandbox's last turn trace (same shape as an admin trace turn) or `null` |
@@ -180,13 +181,13 @@ interface Summary {
 |---|---|---|
 | `GET /api/settings` | | `Settings` |
 | `PUT /api/settings` | partial `Settings` (deep-merged) | `Settings` |
-| `POST /api/push/subscribe` | the browser's `PushSubscription.toJSON()`: `{endpoint, keys: {p256dh, auth}}` | `{ok: true}` (owner only) |
+| `POST /api/push/subscribe` | the browser's `PushSubscription.toJSON()`: `{endpoint, keys: {p256dh, auth}}` | `{ok: true}` (accounts only) |
 | `DELETE /api/push/subscribe` | `{endpoint}` | `{ok: true}` |
 | `POST /api/push/test` | | `{sent: number}` |
-| `GET /api/export/resume-as-code?since=` | | JSON array of Resume-as-code notes (owner only) |
+| `GET /api/export/resume-as-code?since=` | | JSON array of Resume-as-code notes (accounts only) |
 | `GET /api/export/markdown` | | `text/markdown` file |
 | `GET /api/export/sqlite` | | `application/x-sqlite3` file |
-| `POST /api/data/delete` | `{confirm: "delete"}` | `{ok: true}` (owner only; deletes everything) |
+| `POST /api/data/delete` | `{confirm: "delete"}` | `{ok: true}` (accounts only; deletes everything, a Google account's record and its reminder schedules too, and signs out) |
 
 ### Admin (owner only)
 

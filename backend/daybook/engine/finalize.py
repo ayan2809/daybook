@@ -59,7 +59,7 @@ async def finalize_session(app: App, user: User, sid: str, now: datetime | None 
     trace = Trace("finalize", session_id=sid, job="finalize_session")
 
     if state.finalize_result is None:
-        if app.spend.status(user.role, now) == "over" and user.role == "owner":
+        if app.spend.status(user, now) == "over" and user.is_account:
             state.flags["finalize_queued"] = True
             _save(app, user, state, etag)
             log_event(event="finalize_queued", session_id=sid)
@@ -95,7 +95,7 @@ async def finalize_session(app: App, user: User, sid: str, now: datetime | None 
         "pending_created": [p for p in pend if p],
     }
     state.status = "finalized"
-    app.spend.add(user.role, trace.cost_usd, now)
+    app.spend.add(user, trace.cost_usd, now)
     state.budgets["cost_usd"] = round(state.budgets["cost_usd"] + trace.cost_usd, 6)
     stats = session_stats(state)
     vault.write(

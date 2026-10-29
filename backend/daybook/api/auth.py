@@ -19,7 +19,7 @@ from daybook.api.deps import (
     set_cookie,
 )
 from daybook.api.settings_api import read_settings
-from daybook.engine import demo
+from daybook.engine import accounts, demo
 from daybook.engine.app import App, User
 
 router = APIRouter()
@@ -29,12 +29,33 @@ class Login(BaseModel):
     owner_key: str
 
 
+class GoogleLogin(BaseModel):
+    credential: str  # the ID token from Google Identity Services
+
+
 @router.post("/auth/login", dependencies=[Depends(login_rate_limit)])
 def login(body: Login, response: Response, app: App = Depends(app_dep)):
     if not check_owner_key(app, body.owner_key):
         raise ApiError(401, "unauthorized", "That key didn't work.")
     set_cookie(response, app, "owner")
     return {"role": "owner"}
+
+
+@router.post("/auth/google", dependencies=[Depends(login_rate_limit)])
+def login_google(body: GoogleLogin, response: Response, app: App = Depends(app_dep)):
+    """Sign in (and on first use, sign up) with Google (DB-29)."""
+    if not app.settings.google_client_id:
+        raise ApiError(503, "unavailable", "Google sign-in isn't set up.")
+    try:
+        claims = accounts.verify_google(body.credential, app.settings.google_client_id)
+    except ValueError:
+        raise ApiError(401, "unauthorized", "That Google sign-in didn't work. Try again.") from None
+    try:
+        user = accounts.sign_in(app, claims)
+    except accounts.AccountError as exc:
+        raise ApiError(exc.status, exc.code, exc.message) from None
+    set_cookie(response, app, user.role, user=user)
+    return {"role": user.role}
 
 
 @router.post("/auth/logout")
@@ -53,14 +74,16 @@ def me(
         "voice": app.tts is not None,
         "push": bool(app.settings.vapid_public_key),
         "vapid_public_key": app.settings.vapid_public_key or None,
+        "google_client_id": app.settings.google_client_id or None,
     }
     if user is None:
-        return {"role": None, "settings": None, "demo": None, "features": features}
+        return {"role": None, "settings": None, "demo": None, "features": features, "account": None}
     out = {
         "role": user.role,
         "settings": read_settings(app, user),
         "demo": None,
         "features": features,
+        "account": {"email": user.email} if user.is_account else None,
     }
     if user.role == "demo":
         usage = app.demo_caps.usage(user.sandbox_id, now)

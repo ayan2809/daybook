@@ -17,7 +17,7 @@ Parameters:
     Type: String
     AllowedValues: ["true", "false"]
     Default: "false"
-    Description: Reminder + nightly cleanup schedules (needs scheduler permissions on the deployer)
+    Description: Per-account reminders + nightly cleanup (needs scheduler permissions on the deployer)
   AlertEmail:
     Type: String
     Default: ""
@@ -70,7 +70,8 @@ Resources:
                 Action: lambda:InvokeFunction
                 Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:daybook-worker
               - Effect: Allow
-                Action: [scheduler:GetSchedule, scheduler:UpdateSchedule]
+                # per-account reminder schedules, made by the app when Settings change (DB-29)
+                Action: [scheduler:CreateSchedule, scheduler:UpdateSchedule, scheduler:DeleteSchedule, scheduler:GetSchedule]
                 Resource: !Sub arn:aws:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/default/daybook-reminder-*
               - Effect: Allow
                 Action: iam:PassRole
@@ -152,7 +153,8 @@ Resources:
           DAYBOOK_EMBED: gemini
           DAYBOOK_TTS: elevenlabs
           WORKER_FUNCTION_NAME: daybook-worker
-          REMINDER_SCHEDULES: !If [Schedules, "daybook-reminder-first,daybook-reminder-second", ""]
+          SCHEDULER_ROLE_ARN: !If [Schedules, !Sub "arn:aws:iam::${AWS::AccountId}:role/daybook-scheduler-role", ""]
+          WORKER_FUNCTION_ARN: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:daybook-worker
           SSM_PREFIX: /daybook
 
   # Public URL, but only CloudFront knows the X-Origin-Verify value the app requires.
@@ -207,7 +209,8 @@ Resources:
           DAYBOOK_EMBED: gemini
           DAYBOOK_TTS: elevenlabs
           WORKER_FUNCTION_NAME: daybook-worker
-          REMINDER_SCHEDULES: !If [Schedules, "daybook-reminder-first,daybook-reminder-second", ""]
+          SCHEDULER_ROLE_ARN: !If [Schedules, !Sub "arn:aws:iam::${AWS::AccountId}:role/daybook-scheduler-role", ""]
+          WORKER_FUNCTION_ARN: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:daybook-worker
           SSM_PREFIX: /daybook
 
   WorkerInvokeConfig:
@@ -240,40 +243,6 @@ Resources:
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !GetAtt WorkerFunction.Arn
-
-  # Created disabled; saving reminder Settings moves and enables them (push/schedules.py).
-  # A stack update that changes these two resets them: save Settings again afterwards.
-  ReminderFirst:
-    Type: AWS::Scheduler::Schedule
-    Condition: Schedules
-    Properties:
-      Name: daybook-reminder-first
-      Description: First reflection nudge (Web Push)
-      ScheduleExpression: cron(0 19 ? * MON,TUE,WED,THU,FRI *)
-      ScheduleExpressionTimezone: Asia/Kolkata
-      State: DISABLED
-      FlexibleTimeWindow: { Mode: "OFF" }
-      Target:
-        Arn: !GetAtt WorkerFunction.Arn
-        RoleArn: !GetAtt SchedulerRole.Arn
-        Input: '{"job": "reminder_tick"}'
-        RetryPolicy: { MaximumRetryAttempts: 2, MaximumEventAgeInSeconds: 600 }
-
-  ReminderSecond:
-    Type: AWS::Scheduler::Schedule
-    Condition: Schedules
-    Properties:
-      Name: daybook-reminder-second
-      Description: Second reflection nudge (Web Push)
-      ScheduleExpression: cron(0 21 ? * MON,TUE,WED,THU,FRI *)
-      ScheduleExpressionTimezone: Asia/Kolkata
-      State: DISABLED
-      FlexibleTimeWindow: { Mode: "OFF" }
-      Target:
-        Arn: !GetAtt WorkerFunction.Arn
-        RoleArn: !GetAtt SchedulerRole.Arn
-        Input: '{"job": "reminder_tick"}'
-        RetryPolicy: { MaximumRetryAttempts: 2, MaximumEventAgeInSeconds: 600 }
 
   # Once a night: end sessions left open and retry queued finalizes (demo sandboxes too).
   NightlyCleanup:

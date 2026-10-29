@@ -116,6 +116,9 @@ async def start(
             or not app.demo_caps.take(user.sandbox_id, "sessions", now)
         ):
             raise ApiError(429, "demo_cap", "The demo's daily limit was reached. Here's a replay.")
+    if user.role == "user" and not conductor.active_pointer(app, user):
+        if app.spend.status(user, now) != "ok":  # per-account and all-accounts caps (DB-29)
+            raise ApiError(429, "budget", "You've reached today's limit. Come back tomorrow.")
     try:
         state = await conductor.start_session(app, user, body.mode, now, body.item_id)
     except SessionError as exc:
@@ -189,7 +192,7 @@ async def audio(
         raise ApiError(404, "not_found", "No such turn.")
     if app.tts is None or (not state.voice_enabled and not turn.safety):
         return Response(status_code=204)
-    if app.spend.status(user.role, now) != "ok" and not turn.safety:
+    if app.spend.status(user, now) != "ok" and not turn.safety:
         return Response(status_code=204)
     if (
         state.budgets.get("tts_chars", 0) + len(turn.text) > state.tts_char_limit
@@ -210,7 +213,7 @@ async def audio(
         _update(app, user, sid, fail)
         raise ApiError(503, "unavailable", "Voice unavailable.") from None
     if not a.cached:
-        app.spend.add(user.role, a.cost_usd, now)
+        app.spend.add(user, a.cost_usd, now)
 
         def count(s):
             s.budgets["tts_chars"] = s.budgets.get("tts_chars", 0) + len(turn.text)

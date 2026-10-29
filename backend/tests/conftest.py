@@ -6,3 +6,14 @@ os.environ["DAYBOOK_EMBED"] = "fake"
 os.environ["DAYBOOK_TTS"] = "fake"
 os.environ["GEMINI_API_KEY"] = ""
 os.environ["GEMINI_TTS_API_KEY"] = ""
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limits():
+    """The rate limiters are per process; each test starts with full buckets."""
+    from daybook.api import deps
+
+    deps._general.state.clear()
+    deps._login.state.clear()

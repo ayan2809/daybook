@@ -2,25 +2,27 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router";
 import { api, errorMessage } from "../api";
 import { useMe } from "../me";
+import { GoogleButton } from "../components/GoogleButton";
 
 export function Landing() {
   const navigate = useNavigate();
-  const { refresh } = useMe();
-  const [busy, setBusy] = useState(false);
+  const { me, refresh } = useMe();
+  const [busy, setBusy] = useState<"demo" | "google" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
+  const clientId = me?.features.google_client_id ?? null;
 
-  async function startDemo() {
-    setBusy(true);
+  async function run(kind: "demo" | "google", action: () => Promise<unknown>) {
+    setBusy(kind);
     setError(null);
     try {
-      await api.demoStart();
+      await action();
       await refresh();
       navigate("/today");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }
 
@@ -35,8 +37,31 @@ export function Landing() {
           </p>
         </header>
 
-        <button className="btn btn-primary btn-xl" onClick={() => void startDemo()} disabled={busy}>
-          {busy ? "Setting up the demo…" : "Try the demo (no sign-in)"}
+        <section className="card signin-card" aria-labelledby="signin-title">
+          <h2 id="signin-title" className="card-title">
+            Sign in or create your Daybook
+          </h2>
+          {clientId ? (
+            <GoogleButton
+              clientId={clientId}
+              onCredential={(credential) => void run("google", () => api.loginGoogle(credential))}
+            />
+          ) : (
+            <p className="small muted">Google sign-in isn't set up on this server yet.</p>
+          )}
+          <p className="small muted">
+            New here? Signing in with Google creates your account. Your reflections are private to it: nobody
+            else can see them, and you can export or delete everything in Settings.
+          </p>
+          {busy === "google" && <p className="small">Signing you in…</p>}
+        </section>
+
+        <div className="or" aria-hidden="true">
+          <span>or</span>
+        </div>
+
+        <button className="btn btn-xl" onClick={() => void run("demo", api.demoStart)} disabled={busy !== null}>
+          {busy === "demo" ? "Setting up the demo…" : "Try the demo (no sign-in)"}
         </button>
         {error && <p className="error">{error}</p>}
 
@@ -70,7 +95,7 @@ export function Landing() {
             />
           ) : (
             <button className="link small" onClick={() => setShowLogin(true)}>
-              Owner sign-in
+              Sign in with an owner key
             </button>
           )}
         </div>

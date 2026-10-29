@@ -139,6 +139,9 @@ const enc = encodeURIComponent;
 export const api = {
   health: (warm = false) => request<Health>("GET", `/api/health${warm ? "?warm=1" : ""}`),
   login: (owner_key: string) => request<{ role: "owner" }>("POST", "/api/auth/login", { owner_key }),
+  /** Google sign-in; the first sign-in creates the account. */
+  loginGoogle: (credential: string) =>
+    request<{ role: "owner" | "user" }>("POST", "/api/auth/google", { credential }),
   logout: () => request<{ ok: true }>("POST", "/api/auth/logout"),
   me: () => request<Me>("GET", "/api/me"),
   demoStart: () => request<{ role: "demo"; sandbox_id: string }>("POST", "/api/demo/start"),

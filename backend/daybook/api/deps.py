@@ -13,7 +13,7 @@ from fastapi import Depends, Request
 from fastapi.responses import JSONResponse
 from itsdangerous import BadSignature, URLSafeTimedSerializer
 
-from daybook.engine.app import OWNER, App, User, demo_user, get_app
+from daybook.engine.app import App, User, account_user, demo_user, get_app
 
 COOKIE = "db_session"
 OWNER_TTL = 180 * 24 * 3600
@@ -41,15 +41,22 @@ def _serializer(app: App) -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(app.settings.session_signing_key, salt="daybook-session")
 
 
-def make_cookie(app: App, role: str, sandbox_id: str | None = None) -> str:
-    return _serializer(app).dumps({"role": role, "sb": sandbox_id})
+def make_cookie(
+    app: App, role: str, sandbox_id: str | None = None, user: User | None = None
+) -> str:
+    data = {"role": role, "sb": sandbox_id}
+    if user is not None:
+        data.update(uid=user.uid, em=user.email)
+    return _serializer(app).dumps(data)
 
 
-def set_cookie(response, app: App, role: str, sandbox_id: str | None = None) -> None:
+def set_cookie(
+    response, app: App, role: str, sandbox_id: str | None = None, user: User | None = None
+) -> None:
     response.set_cookie(
         COOKIE,
-        make_cookie(app, role, sandbox_id),
-        max_age=OWNER_TTL if role == "owner" else DEMO_TTL,
+        make_cookie(app, role, sandbox_id, user),
+        max_age=DEMO_TTL if role == "demo" else OWNER_TTL,
         httponly=True,
         secure=not app.settings.is_local,
         samesite="strict",
@@ -78,7 +85,9 @@ def optional_user(request: Request, app: App = Depends(app_dep)) -> User | None:
     if not data:
         return None
     if data["role"] == "owner":
-        return OWNER
+        return account_user("owner", data.get("em"))
+    if data["role"] == "user" and data.get("uid"):
+        return account_user(data["uid"], data.get("em"))
     if data["role"] == "demo" and data.get("sb"):
         return demo_user(data["sb"])
     return None
@@ -91,8 +100,16 @@ def current_user(user: User | None = Depends(optional_user)) -> User:
 
 
 def owner_only(user: User = Depends(current_user)) -> User:
+    """Admin pages: Ayan only."""
     if user.role != "owner":
         raise ApiError(403, "forbidden", "Owner only.")
+    return user
+
+
+def account_only(user: User = Depends(current_user)) -> User:
+    """A signed-in account (not the demo): push, exports, delete."""
+    if not user.is_account:
+        raise ApiError(403, "forbidden", "Sign in to use this.")
     return user
 
 

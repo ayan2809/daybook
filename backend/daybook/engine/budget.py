@@ -1,7 +1,9 @@
 """The $2/day spend breaker (plan 15.1) and demo caps.
 
-`spend/{YYYY-MM-DD}.json` (IST day) holds {total, demo, owner}, updated with If-Match and retried on
-conflict. Counts come from token estimates (obs/pricing.yaml).
+`spend/{YYYY-MM-DD}.json` (IST day) holds {total, demo, owner, user}, updated with If-Match and
+retried on conflict. Counts come from token estimates (obs/pricing.yaml). Other accounts (role
+`user`, DB-29) also have their own counter, `users/<uid>/spend/{day}.json`, and two caps: one per
+account and one for all of them together, so strangers can never use up the owner's budget.
 """
 
 from __future__ import annotations
@@ -51,10 +53,19 @@ class Counter:
 
 
 class SpendBreaker:
-    def __init__(self, store: BlobStore, daily_budget: float, demo_budget: float):
+    def __init__(
+        self,
+        store: BlobStore,
+        daily_budget: float,
+        demo_budget: float,
+        users_budget: float = 1.0,
+        per_user_budget: float = 0.3,
+    ):
         self.store = store
         self.daily = daily_budget
         self.demo = demo_budget
+        self.users = users_budget
+        self.per_user = per_user_budget
 
     def _counter(self, now: datetime) -> Counter:
         return Counter(self.store, f"spend/{ist_day(now)}.json")
@@ -65,20 +76,34 @@ class SpendBreaker:
             "total": d.get("total", 0.0),
             "demo": d.get("demo", 0.0),
             "owner": d.get("owner", 0.0),
+            "user": d.get("user", 0.0),
             "budget": self.daily,
         }
 
-    def add(self, role: str, cost: float, now: datetime) -> None:
+    def _mine(self, uid: str, now: datetime) -> Counter:
+        return Counter(self.store, f"users/{uid}/spend/{ist_day(now)}.json")
+
+    def add(self, who, cost: float, now: datetime) -> None:
+        """`who` is a User (or a role string, for callers without one)."""
+        role = who if isinstance(who, str) else who.role
         if cost > 0:
             self._counter(now).add(total=cost, **{role: cost})
+            if role == "user":
+                self._mine(who.uid, now).add(total=cost)
 
-    def status(self, role: str, now: datetime, estimate: float = 0.0) -> str:
+    def status(self, who, now: datetime, estimate: float = 0.0) -> str:
         """ok | demo_replay | over"""
+        role = who if isinstance(who, str) else who.role
         d = self.today(now)
         if d["total"] + estimate >= self.daily:
             return "demo_replay" if role == "demo" else "over"
         if role == "demo" and d["demo"] + estimate >= self.demo:
             return "demo_replay"
+        if role == "user":
+            if d["user"] + estimate >= self.users:
+                return "over"
+            if self._mine(who.uid, now).read().get("total", 0.0) + estimate >= self.per_user:
+                return "over"
         return "ok"
 
 

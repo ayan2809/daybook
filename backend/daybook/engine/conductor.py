@@ -277,7 +277,7 @@ async def start_session(
         },
         edit_item_id=item_id if mode == "edit" else None,
     )
-    if app.spend.status(user.role, now) == "over":
+    if app.spend.status(user, now) == "over":
         state.voice_enabled = False
     trace = Trace("turn", session_id=state.id, seq=1, user_text=None)
     if mode == "edit":
@@ -335,7 +335,7 @@ def _account(app: App, user: User, state: SessionState, trace: Trace, now: datet
     state.budgets["tokens_in"] += trace.tokens_in
     state.budgets["tokens_out"] += trace.tokens_out
     state.budgets["cost_usd"] = round(state.budgets["cost_usd"] + trace.cost_usd, 6)
-    app.spend.add(user.role, trace.cost_usd, now)
+    app.spend.add(user, trace.cost_usd, now)
     for s in trace.spans:
         v = s.attrs.get("daybook.prompt_version")
         if v:

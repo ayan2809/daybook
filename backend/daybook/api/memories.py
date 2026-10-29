@@ -197,7 +197,7 @@ async def answer(
         {"title": item["title"], "what": item["what"]} if item else None,
         body.text,
     )
-    app.spend.add(user.role, trace.cost_usd, now)
+    app.spend.add(user, trace.cost_usd, now)
     if ans is None:
         return {
             "candidate": {
@@ -348,7 +348,7 @@ async def ask(
     user: User = Depends(current_user),
     now: datetime = Depends(now_dep),
 ):
-    status = app.spend.status(user.role, now)
+    status = app.spend.status(user, now)
     if status == "over":
         raise ApiError(429, "budget", "Daily budget reached, try again tomorrow.")
     if user.role == "demo" and (
@@ -366,7 +366,7 @@ async def ask(
         trace,
         app.settings.abstain_cosine,
     )
-    app.spend.add(user.role, trace.cost_usd, now)
+    app.spend.add(user, trace.cost_usd, now)
     d = trace.finish(abstained=out["abstained"])
     app.store.put(
         f"traces/{user.uid}/{today.isoformat()}/jobs/ask-{now.strftime('%H%M%S%f')}.json",

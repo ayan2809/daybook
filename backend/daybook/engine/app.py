@@ -26,17 +26,29 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class User:
-    uid: str  # "owner" or "demo-<sandbox>"
-    role: str  # owner | demo
-    prefix: str  # blob prefix: "users/owner/" or "demo/<sandbox>/"
+    uid: str  # "owner", "g<24 hex>" (a Google account, DB-29) or "demo-<sandbox>"
+    role: str  # owner (Ayan: admin pages) | user (any other account) | demo
+    prefix: str  # blob prefix: "users/owner/", "users/<uid>/" or "demo/<sandbox>/"
     sandbox_id: str | None = None
+    email: str | None = None
 
     @property
     def vault_key(self) -> str:
         return f"{self.prefix}memory.db"
 
+    @property
+    def is_account(self) -> bool:
+        """Owner or user: a real person with their own data (not a demo sandbox)."""
+        return self.role in ("owner", "user")
+
 
 OWNER = User("owner", "owner", "users/owner/")
+
+
+def account_user(uid: str, email: str | None = None) -> User:
+    if uid == OWNER.uid:
+        return User(OWNER.uid, OWNER.role, OWNER.prefix, email=email)
+    return User(uid, "user", f"users/{uid}/", email=email)
 
 
 def demo_user(sandbox_id: str) -> User:
@@ -68,7 +80,13 @@ class App:
             self.embedder = FakeEmbedder(s.embed_dim)
         self.tts = make_tts(s) if tts == "auto" else tts
         self.deps = Deps(self.llm, s)
-        self.spend = SpendBreaker(self.store, s.daily_budget_usd, s.demo_budget_usd)
+        self.spend = SpendBreaker(
+            self.store,
+            s.daily_budget_usd,
+            s.demo_budget_usd,
+            s.users_budget_usd,
+            s.user_daily_budget_usd,
+        )
         self.demo_caps = DemoCaps(self.store, s)
         self._tasks: set[asyncio.Task] = set()
 

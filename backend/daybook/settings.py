@@ -65,11 +65,18 @@ class Settings(BaseSettings):
     session_max_tokens_in: int = 150_000
     daily_budget_usd: float = 2.00
     demo_budget_usd: float = 1.40
+    users_budget_usd: float = 1.00  # all non-owner accounts together, per IST day (DB-29)
+    user_daily_budget_usd: float = 0.30  # one non-owner account per day (about two sessions)
 
     # auth
     owner_key_hash: str = ""  # sha256 hex of the owner key
     session_signing_key: str = "dev-only-signing-key-change-me"
     origin_verify: str = ""  # when set, requests must carry X-Origin-Verify with this value
+    # Google sign-in (DB-29). The client id isn't secret. Sign-in is sign-up.
+    google_client_id: str = ""
+    owner_emails: str = ""  # comma list: these Google accounts open users/owner/ (admin)
+    allowed_emails: str = ""  # comma list; empty = anyone with a verified Google email
+    max_accounts: int = 25
 
     # push
     vapid_public_key: str = ""
@@ -79,8 +86,9 @@ class Settings(BaseSettings):
     # misc
     ssm_prefix: str = "/daybook"
     worker_function_name: str = ""
-    # EventBridge Scheduler names (prod): the two reminder nudges, updated when Settings change
-    reminder_schedules: str = ""  # "daybook-reminder-first,daybook-reminder-second"
+    # EventBridge Scheduler (prod): per-account reminder schedules target the worker (DB-29)
+    scheduler_role_arn: str = ""
+    worker_function_arn: str = ""
     tz_default: str = "Asia/Kolkata"
 
     @property

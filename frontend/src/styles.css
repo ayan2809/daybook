@@ -670,6 +670,30 @@ button.chip {
   padding-top: 8px;
   border-top: 1px solid var(--line);
 }
+.signin-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.google-button {
+  min-height: 44px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+.or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+.or::before,
+.or::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
 
 /* ---- today --------------------------------------------------------------- */
 

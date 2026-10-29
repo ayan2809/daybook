@@ -10,14 +10,20 @@ import json
 from datetime import UTC, datetime
 from typing import Any
 
-from daybook.engine.app import OWNER, App, User, demo_user, get_app
+from daybook.engine.app import OWNER, App, User, account_user, demo_user, get_app
 from daybook.obs.log import log_event
 
 
 def _user(event: dict) -> User:
     if event.get("sandbox_id"):
         return demo_user(event["sandbox_id"])
-    return OWNER
+    return account_user(event.get("uid") or OWNER.uid)
+
+
+def _accounts(app: App) -> list[User]:
+    from daybook.engine import accounts
+
+    return [OWNER] + [account_user(uid) for uid in accounts.all_uids(app)]
 
 
 async def run_job(app: App, event: dict[str, Any]) -> dict:
@@ -29,9 +35,10 @@ async def run_job(app: App, event: dict[str, Any]) -> dict:
         return await finalize_session(app, _user(event), event["session_id"])
     if job == "session_judge":
         return await session_judge(app, _user(event), event["session_id"])
-    if job == "reminder_tick":
+    if job == "reminder_tick":  # a schedule names its account; the local ticker checks them all
+        users = [_user(event)] if event.get("uid") else _accounts(app)
         out = {"cleanup": await cleanup_stale_sessions(app, now)}
-        out["reminder"] = reminder_tick(app, now)
+        out["reminder"] = {u.uid: reminder_tick(app, u, now) for u in users}
         return out
     if job == "cleanup_stale_sessions":
         return await cleanup_stale_sessions(app, now)
@@ -51,7 +58,7 @@ async def session_judge(app: App, user: User, sid: str) -> dict:
         return {"status": "skipped"}
     trace = Trace("judge", session_id=sid, job="session_judge")
     scores = await judge(app.deps, trace, state.turn_dicts())
-    app.spend.add(user.role, trace.cost_usd, datetime.now(UTC))
+    app.spend.add(user, trace.cost_usd, datetime.now(UTC))
     if scores is None:
         return {"status": "failed"}
     s = scores.model_dump()
@@ -106,42 +113,36 @@ async def cleanup_stale_sessions(app: App, now: datetime) -> dict:
     from daybook.engine.finalize import finalize_session
 
     ended, retried = 0, 0
-    prefixes = ["users/owner/"] + sorted(
-        {
-            "/".join(k.split("/")[:2]) + "/"
-            for k in app.store.list("demo/")
-            if k.endswith("active.json")
-        }
-    )
-    for prefix in prefixes:
-        user = OWNER if prefix == OWNER.prefix else demo_user(prefix.split("/")[1])
+    demos = sorted({k.split("/")[1] for k in app.store.list("demo/") if k.endswith("active.json")})
+    for user in _accounts(app) + [demo_user(sb) for sb in demos]:
+        prefix = user.prefix
         sid = conductor.active_pointer(app, user)
         if sid:
             loaded = st.load(app.store, prefix, sid)
             if loaded and loaded[0].status == "active" and is_stale(loaded[0], now):
                 await conductor.end_session(app, user, sid, "idle", now)
                 ended += 1
-        if user.role == "owner":
+        if user.is_account:
             for key in app.store.list(f"{prefix}sessions/")[-20:]:
                 loaded = st.load(app.store, prefix, key.rsplit("/", 1)[1][:-5])
                 if (
                     loaded
                     and (loaded[0].flags.get("finalize_queued") or loaded[0].status == "failed")
-                    and app.spend.status("owner", now) == "ok"
+                    and app.spend.status(user, now) == "ok"
                 ):
                     await finalize_session(app, user, loaded[0].id)
                     retried += 1
     return {"ended": ended, "retried": retried}
 
 
-def reminder_tick(app: App, now: datetime) -> dict:
+def reminder_tick(app: App, user: User, now: datetime) -> dict:
     from daybook.push.reminders import tick
     from daybook.push.webpush import VapidSender
 
     if not app.settings.vapid_private_key:
         return {"sent": 0, "reason": "no VAPID key"}
     sender = VapidSender(app.settings.vapid_private_key, app.settings.site_url)
-    return tick(app.vault(OWNER), app.store, OWNER.prefix, sender, now)
+    return tick(app.vault(user), app.store, user.prefix, sender, now)
 
 
 def handler(event, context=None):  # Lambda entry point

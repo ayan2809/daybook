@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel
 
-from daybook.api.deps import ApiError, app_dep, current_user, now_dep, owner_only
+from daybook.api.deps import COOKIE, ApiError, account_only, app_dep, current_user, now_dep
+from daybook.engine import accounts
 from daybook.engine.app import App, User
 from daybook.memory import export, repo
 from daybook.obs.log import log_event
@@ -94,17 +95,21 @@ def put_settings(body: dict, app: App = Depends(app_dep), user: User = Depends(c
 
     app.vault(user).write(write)
     out = read_settings(app, user)
-    names = [n for n in app.settings.reminder_schedules.split(",") if n]
-    if names and user.role == "owner" and (rem or profile):
+    s = app.settings
+    if s.scheduler_role_arn and s.worker_function_arn and user.is_account and (rem or profile):
         from daybook.push.schedules import sync_reminder_schedules
 
         try:
-            moved = sync_reminder_schedules(names, out["reminder"], out["profile"]["timezone"])
+            moved = sync_reminder_schedules(
+                user.uid,
+                out["reminder"],
+                out["profile"]["timezone"],
+                worker_arn=s.worker_function_arn,
+                role_arn=s.scheduler_role_arn,
+            )
             log_event(event="reminder_schedules", schedules=moved)
-        except Exception:
-            log.exception(
-                "reminder schedule sync failed"
-            )  # settings are saved; times stay as before
+        except Exception:  # settings are saved; reminder times stay as they were
+            log.exception("reminder schedule sync failed")
     return out
 
 
@@ -114,7 +119,7 @@ class PushSub(BaseModel):
 
 
 @router.post("/push/subscribe")
-def push_subscribe(body: PushSub, app: App = Depends(app_dep), user: User = Depends(owner_only)):
+def push_subscribe(body: PushSub, app: App = Depends(app_dep), user: User = Depends(account_only)):
     if not body.keys or not body.keys.get("p256dh") or not body.keys.get("auth"):
         raise ApiError(422, "validation", "Subscription keys missing.")
 
@@ -131,7 +136,9 @@ def push_subscribe(body: PushSub, app: App = Depends(app_dep), user: User = Depe
 
 
 @router.delete("/push/subscribe")
-def push_unsubscribe(body: PushSub, app: App = Depends(app_dep), user: User = Depends(owner_only)):
+def push_unsubscribe(
+    body: PushSub, app: App = Depends(app_dep), user: User = Depends(account_only)
+):
     app.vault(user).write(
         lambda c: c.execute("DELETE FROM push_subscriptions WHERE endpoint = ?", (body.endpoint,))
     )
@@ -139,7 +146,7 @@ def push_unsubscribe(body: PushSub, app: App = Depends(app_dep), user: User = De
 
 
 @router.post("/push/test")
-def push_test(app: App = Depends(app_dep), user: User = Depends(owner_only)):
+def push_test(app: App = Depends(app_dep), user: User = Depends(account_only)):
     if not app.settings.vapid_private_key:
         raise ApiError(503, "unavailable", "Push isn't configured (no VAPID key).")
     from daybook.push.webpush import VapidSender
@@ -163,14 +170,14 @@ def push_test(app: App = Depends(app_dep), user: User = Depends(owner_only)):
 
 @router.get("/export/resume-as-code")
 def export_rac(
-    since: str | None = None, app: App = Depends(app_dep), user: User = Depends(owner_only)
+    since: str | None = None, app: App = Depends(app_dep), user: User = Depends(account_only)
 ):
     with app.vault(user).read() as conn:
         return export.resume_as_code(conn, since)
 
 
 @router.get("/export/markdown")
-def export_md(app: App = Depends(app_dep), user: User = Depends(owner_only)):
+def export_md(app: App = Depends(app_dep), user: User = Depends(account_only)):
     with app.vault(user).read() as conn:
         md = export.markdown(conn)
     return PlainTextResponse(
@@ -181,7 +188,7 @@ def export_md(app: App = Depends(app_dep), user: User = Depends(owner_only)):
 
 
 @router.get("/export/sqlite")
-def export_sqlite(app: App = Depends(app_dep), user: User = Depends(owner_only)):
+def export_sqlite(app: App = Depends(app_dep), user: User = Depends(account_only)):
     return Response(
         app.vault(user).raw_bytes(),
         media_type="application/x-sqlite3",
@@ -196,13 +203,20 @@ class DeleteBody(BaseModel):
 @router.post("/data/delete")
 def delete_all(
     body: DeleteBody,
+    response: Response,
     app: App = Depends(app_dep),
-    user: User = Depends(owner_only),
+    user: User = Depends(account_only),
     now: datetime = Depends(now_dep),
 ):
     if body.confirm != "delete":
         raise ApiError(422, "validation", 'Type "delete" to confirm.')
-    n = app.store.delete_prefix(user.prefix)
-    n += app.store.delete_prefix(f"traces/{user.uid}/")
-    app.vaults.forget(user.vault_key)
+    n = accounts.delete(app, user)
+    if app.settings.scheduler_role_arn:
+        from daybook.push.schedules import delete_reminder_schedules
+
+        try:
+            delete_reminder_schedules(user.uid)
+        except Exception:
+            log.exception("reminder schedule delete failed")
+    response.delete_cookie(COOKIE, path="/api")
     return {"ok": True, "deleted": n}

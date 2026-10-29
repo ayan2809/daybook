@@ -24,6 +24,9 @@ FROM_ENV = [
     "OWNER_KEY_HASH",
     "VAPID_PUBLIC_KEY",
     "VAPID_PRIVATE_KEY",
+    "GOOGLE_CLIENT_ID",  # not secret, but kept with the rest of the config (DB-29)
+    "OWNER_EMAILS",
+    "ALLOWED_EMAILS",
 ]
 GENERATED = ["SESSION_SIGNING_KEY", "ORIGIN_VERIFY"]
 REQUIRED = ["GEMINI_API_KEY", "ELEVENLABS_API_KEY"]

@@ -67,6 +67,7 @@ Legend: ✅ done and tested · 🟡 partial · ⬜ not started
 | Push + reminders | 🟡 | tick logic tested with a fake sender; real Web Push needs HTTPS + device (RQ-10) |
 | Traces, Admin API, session judge | ✅ | Admin UI built by the frontend subagent; checked only by type-check |
 | Demo sandbox, seed, caps, replay | 🟡 | persona: Ayan at Kestrel Travel, fictional, plain words (DB-25); replay has no recorded session yet (RQ-07) |
+| Accounts (Google sign-in = sign-up, per-user vaults, DB-29) | 🟡 | built and tested offline (7 tests) and the landing page in a browser; live Google sign-in waits for the OAuth client id (RQ-14) |
 | Frontend PWA | ✅ | all screens; browser-tested flows above; not yet on a real phone |
 | Eval runner + data | 🟡 | fake mode in CI; live run waits for sign-off (RQ-05); `sim` suite (P1) not built |
 | CI (GitHub Actions) | ✅ | `.github/workflows/ci.yml`: ruff, pytest, fake evals, tsc, build |
