@@ -59,6 +59,9 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
   `http://localhost:5173`, no redirect URIs. Then in `.env`: `GOOGLE_CLIENT_ID=…apps.googleusercontent.com`,
   `OWNER_EMAILS=<your Google email>`, optionally `ALLOWED_EMAILS=…`; run `make secrets` and `make deploy`.
   *Assumed:* until then the landing page says Google sign-in isn't set up; the owner key and the demo work.
+  **2026-10-29:** client created, in SSM, deployed; the button loads on the prod origin. Left: Ayan signs in
+  once with his Google email (should open his own data with Admin), and adds `http://localhost` +
+  `http://localhost:5173` as origins for local sign-in.
 
 ## Device / manual tests (can't be done by the agent)
 
