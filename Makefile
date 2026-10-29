@@ -22,8 +22,8 @@ lint: ## ruff + typescript
 api: ## API on :8300 with the fake LLM
 	$(BE) DAYBOOK_LLM=fake DAYBOOK_EMBED=fake DAYBOOK_TTS=fake uv run uvicorn daybook.main:app --reload --port $(PORT)
 
-api-live: ## API on :8300 with real Gemini (LLM + embeddings + Gemini TTS)
-	$(BE) DAYBOOK_LLM=live DAYBOOK_EMBED=gemini DAYBOOK_TTS=$${DAYBOOK_TTS:-gemini} DAYBOOK_DATA_DIR=../data/local-live uv run uvicorn daybook.main:app --reload --port $(PORT)
+api-live: ## API on :8300 with real Gemini (LLM + embeddings) + ElevenLabs voice (DAYBOOK_TTS=gemini for Gemini TTS)
+	$(BE) DAYBOOK_LLM=live DAYBOOK_EMBED=gemini DAYBOOK_TTS=$${DAYBOOK_TTS:-elevenlabs} DAYBOOK_DATA_DIR=../data/local-live uv run uvicorn daybook.main:app --reload --port $(PORT)
 
 web: ## Vite dev server on :5173 (proxies /api to :8300)
 	cd frontend && npm run dev

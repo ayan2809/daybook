@@ -5,15 +5,22 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
 
 ## Decisions needed
 
-- [ ] **RQ-01 · ElevenLabs.** Key arrives tomorrow. Until then voice uses Gemini TTS (DB-03). When the key
+- [x] **RQ-01 · ElevenLabs.** Key arrives tomorrow. Until then voice uses Gemini TTS (DB-03). When the key
   is in `.env` as `ELEVENLABS_API_KEY`: pick a voice by ear (set `ELEVEN_VOICE_ID`) and compare
   `eleven_flash_v2_5` with v3 Conversational. *Assumed:* `DAYBOOK_TTS=gemini` locally.
-- [ ] **RQ-02 · Push to GitHub.** The remote `ayan2809/daybook` is set. The agent pushes the feature branch
+  **Resolved 2026-10-29:** key set; Ayan picked **Sarah** (`EXAVITQu4vr4xnSDxMaL`, mature, warm, reassuring)
+  on `eleven_flash_v2_5` (DB-26). Live smoke test passed (MP3 for every reply, 0.3–0.6 s). v3
+  Conversational (same $0.04 / 1K chars) can still be compared by ear later.
+- [x] **RQ-02 · Push to GitHub.** The remote `ayan2809/daybook` is set. The agent pushes the feature branch
   (code only, no secrets). Confirm the repo should stay public. *Assumed:* yes (plan §22).
+  **Resolved 2026-10-29:** Ayan confirmed; the feature branch is on GitHub (CI green), not merged to main.
 
-- [ ] **RQ-03 · Gemini TTS price.** `obs/pricing.yaml` has a conservative placeholder for
+- [x] **RQ-03 · Gemini TTS price.** `obs/pricing.yaml` has a conservative placeholder for
   `gemini-3.8-flash-lite-tts` (not verified against the pricing page). The spend breaker uses it.
   *Assumed:* placeholder until checked; the whole live demo run (voice included) counted $0.039.
+  **Resolved 2026-10-29** (pricing page, updated 2026-10-28): $0.50 / 1M text tokens in, **$6.00 / 1M audio
+  tokens** out (25 tokens = 1 s, so ≈ $0.0015 per 10 s of audio), free tier available; both double on
+  2027-01-01. `pricing.yaml` updated (output was a $10 placeholder).
 - [ ] **RQ-04 · Turn latency ≈ 3.2 s p50** (target ≤ 2.5 s; DB-14). Options: (a) accept for now; text
   shows at once and voice follows; (b) merge Researcher + fast pass into one call (saves no hop, only
   tokens); (c) start the Chat call in parallel with the analysis using the previous turn's plan, then

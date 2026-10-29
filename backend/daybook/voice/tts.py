@@ -41,7 +41,7 @@ class FakeTTS:
 
 
 class ElevenLabsTTS:
-    """POST /v1/text-to-speech/{voice_id} (docs checked 2026-10-24). Untested until the key arrives."""
+    """POST /v1/text-to-speech/{voice_id} (docs checked 2026-10-24; smoke-tested live 2026-10-29)."""
 
     name = "elevenlabs"
 

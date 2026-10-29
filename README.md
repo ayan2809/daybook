@@ -6,7 +6,7 @@ achievements with resume bullets, the numbers behind them, things you learned, a
 close tomorrow ("you said the import got faster: by how much?").
 
 - **You speak or type** (on iPhone, with the Wispr Flow keyboard); **Daybook answers out loud**
-  (Gemini TTS for now, ElevenLabs once the key is set).
+  (ElevenLabs, voice "Sarah"; Gemini TTS as the fallback).
 - **Gemini does the language work**: understanding each turn, drafting items, writing bullets and
   answering questions. **Plain Python decides everything else**: what to ask next, when to wrap up,
   which numbers are allowed and how deltas are computed.
@@ -58,7 +58,7 @@ in [docs/REVIEW_QUEUE.md](docs/REVIEW_QUEUE.md).
 make install        # uv sync (Python 3.12) + npm install
 make test           # 25 offline tests, about 3 s
 make dev            # API on :8300 with fake LLM/voice + Vite on :5173 → open http://localhost:5173
-make dev-live       # the same with real Gemini (needs GEMINI_API_KEY in .env)
+make dev-live       # the same with real Gemini + ElevenLabs voice (needs GEMINI_API_KEY, ELEVENLABS_API_KEY in .env)
 make chat-live      # a full reflection in the terminal, no browser
 make eval           # eval suites in fake mode (free; checks the plumbing only)
 make seed           # rebuild data/seed/demo-memory.db from data/seed/demo-persona.json
@@ -598,7 +598,7 @@ The flow:
   - returns `503` on a TTS error, and voice turns off after 2 failures
   - always speaks safety replies
 - **Providers** (`voice/tts.py`, picked by `DAYBOOK_TTS`):
-  - `elevenlabs`: `eleven_flash_v2_5`, MP3. Written to the docs but not tested yet.
+  - `elevenlabs`: `eleven_flash_v2_5`, voice Sarah (`EXAVITQu4vr4xnSDxMaL`), MP3. The live default (DB-26).
   - `gemini`: `gemini-3.8-flash-lite-tts`, voice Sulafat, 24 kHz WAV. The current default.
   - `fake`: a short silent WAV.
 - **Cache:** audio is cached in the blob store under `tts-cache/{sha}.wav|mp3`, keyed by provider,
@@ -640,7 +640,7 @@ reflection short.
   limit is 15 sessions and 30 asks. Past a cap, the demo shows **replay mode**, a recorded session.
 - **Per session:** caps on turns, input tokens and TTS characters.
 
-Cost per call comes from `obs/pricing.yaml`. The Gemini TTS price there is a placeholder (RQ-03).
+Cost per call comes from `obs/pricing.yaml`. Prices were last checked on 2026-10-29; the Gemini prices double on 2027-01-01.
 
 ---
 
@@ -777,7 +777,7 @@ or the root `.env`.
 
 | Setting | Default | Notes |
 |---|---|---|
-| `DAYBOOK_LLM` / `DAYBOOK_EMBED` / `DAYBOOK_TTS` | fake | `gemini` for live; TTS also `elevenlabs` |
+| `DAYBOOK_LLM` / `DAYBOOK_EMBED` / `DAYBOOK_TTS` | fake | `gemini` for live; `make dev-live` sets TTS to `elevenlabs` |
 | `MODEL_CHAT`, `MODEL_ROUTER`, `MODEL_FAST`, `MODEL_CONTEXT` | `gemini-3.5-flash-lite` | per-turn calls |
 | `MODEL_DEEP`, `MODEL_ASK` | `gemini-3.8-flash` | finalize and Ask |
 | `EMBED_MODEL`, `EMBED_DIM` | `gemini-embedding-2`, 768 | |

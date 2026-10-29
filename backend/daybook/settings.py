@@ -41,7 +41,7 @@ class Settings(BaseSettings):
 
     # voice
     eleven_model: str = "eleven_flash_v2_5"
-    eleven_voice_id: str = ""
+    eleven_voice_id: str = "EXAVITQu4vr4xnSDxMaL"  # "Sarah" (DB-26)
     elevenlabs_api_key: str = ""
     gemini_tts_model: str = "gemini-3.8-flash-lite-tts"
     gemini_tts_voice: str = "Sulafat"
