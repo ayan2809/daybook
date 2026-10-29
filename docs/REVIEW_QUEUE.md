@@ -39,6 +39,16 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
 - [ ] **RQ-09 · Ownership wording in bullets.** Live deep pass turned "helping a friend" into "Mentored…".
   Prompt v2 forbids it (DB-18); confirm with the live extraction eval (RQ-05).
 
+- [ ] **RQ-12 · Put the keys in SSM, then deploy.** The agent may not write to the secret store, so run
+  `make owner-key` (if you want owner sign-in in prod), then `make secrets` (prints names only), then
+  `make deploy`. *Assumed:* the app stack isn't created until the secrets exist (it would otherwise
+  run with the dev signing key).
+- [ ] **RQ-13 · Deployer policy update.** `infra/iam/daybook-deployer-policy.json` now also allows
+  EventBridge Scheduler on `schedule/default/daybook-*`, `iam:PassRole` to `scheduler.amazonaws.com`,
+  and Budgets on `budget/daybook-*`. Re-apply it to `ayan-mac` from an admin login, then
+  `DAYBOOK_SCHEDULES=true make deploy-backend` (and `DAYBOOK_ALERT_EMAIL=… ` for the budget alert).
+  *Assumed:* until then, no reminder pushes and no nightly cleanup (opening Today still cleans up).
+
 ## Device / manual tests (can't be done by the agent)
 
 - [ ] **RQ-10 · Spikes S2, S3, S4** (iPhone push + Watch, Wispr Flow keyboard in the installed PWA,

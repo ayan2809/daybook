@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Daybook storage (plan 12.1). Kept apart from the app stack so deleting the app never touches
+  the memory vault. Data bucket is retained even if this stack is deleted.
+
+Resources:
+  DataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub daybook-data-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      VersioningConfiguration: { Status: Enabled }
+      OwnershipControls:
+        Rules: [{ ObjectOwnership: BucketOwnerEnforced }]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: demo-sandboxes
+            Status: Enabled
+            Prefix: demo/
+            ExpirationInDays: 2
+            NoncurrentVersionExpiration: { NoncurrentDays: 1 }
+          - Id: traces
+            Status: Enabled
+            Prefix: traces/
+            ExpirationInDays: 180
+          - Id: deploy-zips
+            Status: Enabled
+            Prefix: artifacts/
+            ExpirationInDays: 30
+          - Id: old-versions
+            Status: Enabled
+            NoncurrentVersionExpiration: { NoncurrentDays: 30 }
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
+          - Id: delete-markers
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
+
+  WebBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub daybook-web-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 }
+      OwnershipControls:
+        Rules: [{ ObjectOwnership: BucketOwnerEnforced }]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+Outputs:
+  DataBucketName:
+    Value: !Ref DataBucket
+    Export: { Name: daybook-data-bucket }
+  DataBucketArn:
+    Value: !GetAtt DataBucket.Arn
+    Export: { Name: daybook-data-bucket-arn }
+  WebBucketName:
+    Value: !Ref WebBucket
+    Export: { Name: daybook-web-bucket }
+  WebBucketArn:
+    Value: !GetAtt WebBucket.Arn
+    Export: { Name: daybook-web-bucket-arn }
+  WebBucketDomain:
+    Value: !GetAtt WebBucket.RegionalDomainName
+    Export: { Name: daybook-web-bucket-domain }

@@ -825,19 +825,45 @@ or the root `.env`.
 
 ---
 
-## 24. Deployment target (planned, not built yet)
+## 24. Deployment (AWS, ap-south-1)
 
-Nothing is deployed yet. The plan (plan.md §5, §12) is:
+Everything scales to zero (DB-27): no servers, no VPC, no NAT gateway, no API Gateway, no
+always-on timer. AWS cost at one person's use is about $0–0.10 a month (inside the Lambda and
+CloudFront free allowances); the AI calls are the real cost and are capped by the spend breaker.
 
-- **Hosting:** CloudFront in front of an S3 bucket for the app files, and `/api/*` sent to a Lambda
-  `daybook-api` (FastAPI through Mangum, `main.handler`) with a secret origin header.
-- **Jobs:** a second Lambda, `daybook-worker` (`worker.handler`), for finalize, judge and cleanup.
-- **Schedule:** EventBridge runs `reminder_tick` every 15 minutes.
-- **Storage:** one S3 bucket with versioning, for the vault, sessions, traces and counters.
-- **Secrets:** SSM. The deployer IAM policy is in `infra/iam/`.
+```
+browser ── https://<id>.cloudfront.net ── CloudFront
+                                            ├─ /*      → S3 daybook-web-<acct> (OAC; SPA rewrite function)
+                                            └─ /api/*  → Lambda Function URL (daybook-api)
+                                                          + secret X-Origin-Verify header
+daybook-api ──(async invoke)──► daybook-worker   finalize, judge
+EventBridge Scheduler ────────► daybook-worker   reminder at your exact times + 23:45 cleanup
+both Lambdas ── S3 daybook-data-<acct> (vault, sessions, traces) · SSM /daybook/* (keys)
+```
 
-The code is already written for this: `S3BlobStore`, `App.dispatch` (Lambda invoke), the `handler`
-functions and the origin lock. The stack and deploy scripts wait for the go-ahead.
+- **Two stacks.** `infra/storage.yaml` (`daybook-storage`): the data bucket (versioned, retained even
+  if the stack is deleted; lifecycle: `demo/` 2 days, `traces/` 180 days, `artifacts/` 30 days, old
+  versions 30 days) and the web bucket. `infra/daybook.yaml` (`daybook`): roles, both Lambdas
+  (Python 3.12, arm64, 1024 MB; api 29 s, worker 300 s), the Function URL with both permission
+  statements AWS requires since Oct 2025, CloudFront (managed CachingOptimized / CachingDisabled /
+  AllViewerExceptHostHeader / SecurityHeaders policies), the schedules and an optional budget alert.
+- **What wakes things up.** A request (the API runs, then sleeps); the API handing the worker a job;
+  the two reminder schedules (moved by `push/schedules.py` whenever Settings change; `UpdateSchedule`
+  replaces the whole schedule, so it reads it first); one nightly cleanup. Opening Today also ends a
+  session you left open (`worker.is_stale`), so the summary doesn't wait for the night job.
+- **Secrets.** `make secrets` copies keys from `.env` into SSM SecureStrings and generates the
+  session signing key and origin header in SSM. The Lambdas read `/daybook/*` once per cold start
+  (`settings.load_ssm_secrets`); nothing secret is in the template or the Lambda environment.
+- **Zip.** `scripts/build_lambda_zip.sh`: uv installs `manylinux_2_34` aarch64 wheels (Amazon Linux
+  2023 has glibc 2.34) with no Docker; pure-Python sdists (http-ece) are installed separately. The
+  zip holds `daybook/`, `schema.sql` and `seed/` (the demo seed, `DAYBOOK_SEED_DIR=/var/task/seed`).
+  About 140 MB unzipped, 46 MB zipped.
+- **No reserved concurrency.** The account's Lambda limit is 10, which leaves nothing to reserve;
+  the spend breaker caps cost instead.
+- **Commands.** `make secrets` → `make deploy` (storage, zip, app stack, PWA, smoke check).
+  `make deploy-backend` / `make deploy-frontend` for one half, `DAYBOOK_SCHEDULES=true` to add the
+  schedules, `DAYBOOK_ALERT_EMAIL=…` for the budget alert, `make status`, `make logs`
+  (`FN=worker`), `make destroy` (the app stack only; data stays).
 
 ---
 

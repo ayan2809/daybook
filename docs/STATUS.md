@@ -6,7 +6,7 @@ every working block. Owner of the build: the main implementation agent; subagent
 
 **Last updated:** 2026-10-29 · **Branch:** `feature/initial-implementation`
 **State:** M1 (engine), M2 (PWA core) and M3 (memory features) work locally, in fake mode and against
-live Gemini. Nothing is deployed (no infra changes until Ayan says so).
+live Gemini. Infra go-ahead given 2026-10-29: storage stack deployed, app stack waits for secrets.
 
 ## How to run (local)
 
@@ -21,6 +21,8 @@ make eval                        # eval suites in fake mode (plumbing only; free
 make seed                        # rebuild data/seed/demo-memory.db from demo-persona.json (DAYBOOK_EMBED=gemini for prod)
 make check-data                  # seed + eval inputs consistent (keys, quotes, numbers)
 make owner-key / make vapid      # owner sign-in key (prints once) / Web Push keys, both into .env
+make secrets                     # .env keys → SSM /daybook/* (prints names only)
+make deploy                      # storage + Lambda zip + app stack + PWA + smoke (DB-27)
 ```
 
 Root `.env` (git-ignored): `GEMINI_API_KEY`, `GEMINI_TTS_API_KEY` (from Lore), later `ELEVENLABS_API_KEY`,
@@ -67,13 +69,15 @@ Legend: ✅ done and tested · 🟡 partial · ⬜ not started
 | Frontend PWA | ✅ | all screens; browser-tested flows above; not yet on a real phone |
 | Eval runner + data | 🟡 | fake mode in CI; live run waits for sign-off (RQ-05); `sim` suite (P1) not built |
 | CI (GitHub Actions) | ✅ | `.github/workflows/ci.yml`: ruff, pytest, fake evals, tsc, build |
-| Infra (CloudFormation, deploy scripts, Lambda zip) | ⬜ | **blocked: no deploys until Ayan says so** |
+| Infra (CloudFormation, deploy scripts, Lambda zip) | 🟡 | go-ahead 2026-10-29. Templates + scripts done (DB-27). `daybook-storage` stack **deployed**; app stack waits for `make secrets` (RQ-12) |
 
 ## Next up (in order)
 
 1. Ayan: work through `docs/REVIEW_QUEUE.md` (owner key, persona/eval sign-off, latency choice).
 2. Record the demo replay session with ElevenLabs audio (RQ-07).
-3. Infra (after the go-ahead): `infra/daybook.yaml`, `infra/deploy.sh`, `scripts/build_lambda_zip.sh`,
+3. Infra: Ayan runs `make secrets` (+ `make owner-key` first), then `make deploy`; then the deployer policy
+   update (RQ-13) and `DAYBOOK_SCHEDULES=true make deploy-backend`; then spikes on the real URL. Was:
+   `infra/daybook.yaml`, `infra/deploy.sh`, `scripts/build_lambda_zip.sh`,
    SSM secrets, then spikes S1/S2/S3/S4/S6/S7 on the real URL.
 4. P1: Remind me read-aloud, pre-recorded lines, continuity recall, `sim` eval suite, weekly digest.
 5. First live eval run (after sign-off), fix the worst failures.

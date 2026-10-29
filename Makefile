@@ -1,9 +1,10 @@
-# Daybook: local development. Deploy targets come later (no infra changes until Ayan says so).
+# Daybook: local development and AWS deploy (CloudFormation; infra/deploy.sh).
 SHELL := /bin/bash
 BE := cd backend &&
 PORT ?= 8300
 
-.PHONY: help install test lint dev dev-live api api-live web chat chat-live seed owner-key vapid eval build-web
+.PHONY: help install test lint dev dev-live api api-live web chat chat-live seed owner-key vapid eval build-web \
+	secrets build-lambda deploy deploy-backend deploy-frontend status logs destroy
 
 help:
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk -F':.*?## ' '{printf "  %-12s %s\n", $$1, $$2}'
@@ -60,3 +61,28 @@ eval: ## eval suites in fake mode (plumbing only; free)
 
 eval-live: ## live eval run: prints the cost estimate and needs --yes (get Ayan's sign-off first)
 	uv run --project backend python -m evals run --suite $${SUITE:-all} --mode live
+
+# ---------------------------------------------------------------- AWS (ap-south-1)
+secrets: ## copy keys from .env into SSM (/daybook/*); never prints values
+	$(BE) uv run python scripts/push_secrets.py
+
+build-lambda: ## build build/daybook-lambda.zip (arm64 wheels, no Docker)
+	scripts/build_lambda_zip.sh
+
+deploy: ## full deploy: storage, Lambda zip, app stack, PWA, smoke check
+	infra/deploy.sh all
+
+deploy-backend: ## Lambda + stack only (DAYBOOK_SCHEDULES=true for reminder schedules)
+	infra/deploy.sh backend
+
+deploy-frontend: ## PWA only (build, upload, invalidate)
+	infra/deploy.sh frontend
+
+status: ## stack outputs
+	aws cloudformation describe-stacks --stack-name daybook --query 'Stacks[0].[StackStatus,Outputs]' --output table
+
+logs: ## tail the API logs (FN=worker for the worker)
+	aws logs tail /aws/lambda/daybook-$${FN:-api} --since 30m --follow
+
+destroy: ## delete the app stack (the data bucket and its memory vault are kept)
+	@read -p "Type daybook to delete the app stack: " x && [ "$$x" = daybook ] && aws cloudformation delete-stack --stack-name daybook && aws cloudformation wait stack-delete-complete --stack-name daybook && echo deleted

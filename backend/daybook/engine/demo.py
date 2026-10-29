@@ -5,6 +5,7 @@ dates shifted so the last reflection is always "yesterday", caps, suggested repl
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import sqlite3
@@ -18,9 +19,10 @@ from daybook.engine.app import App, User, demo_user
 from daybook.memory import db, repo, retrieval
 from daybook.settings import REPO_ROOT
 
-SEED_DB = REPO_ROOT / "data" / "seed" / "demo-memory.db"
-SEED_JSON = REPO_ROOT / "data" / "seed" / "demo-persona.json"
-REPLAY_JSON = REPO_ROOT / "data" / "seed" / "replay.json"
+SEED_DIR = Path(os.environ.get("DAYBOOK_SEED_DIR") or REPO_ROOT / "data" / "seed")
+SEED_DB = SEED_DIR / "demo-memory.db"
+SEED_JSON = SEED_DIR / "demo-persona.json"
+REPLAY_JSON = SEED_DIR / "replay.json"
 _DATE = re.compile(r"\b20\d\d-\d\d-\d\d\b")
 
 SUGGESTIONS = {

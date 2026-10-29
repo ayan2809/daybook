@@ -5,6 +5,7 @@ Locally the root `.env` is read too. In Lambda the secrets come from SSM (see `l
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -78,6 +79,8 @@ class Settings(BaseSettings):
     # misc
     ssm_prefix: str = "/daybook"
     worker_function_name: str = ""
+    # EventBridge Scheduler names (prod): the two reminder nudges, updated when Settings change
+    reminder_schedules: str = ""  # "daybook-reminder-first,daybook-reminder-second"
     tz_default: str = "Asia/Kolkata"
 
     @property
@@ -89,6 +92,24 @@ class Settings(BaseSettings):
         return self.gemini_tts_api_key or self.gemini_api_key
 
 
+def load_ssm_secrets(prefix: str) -> int:
+    """Copy SecureString parameters under `prefix` (e.g. /daybook/gemini_api_key) into the
+    environment as GEMINI_API_KEY etc. Values already in the environment win. Prod only."""
+    import boto3
+
+    ssm = boto3.client("ssm")
+    n = 0
+    for page in ssm.get_paginator("get_parameters_by_path").paginate(
+        Path=prefix, WithDecryption=True
+    ):
+        for p in page["Parameters"]:
+            os.environ.setdefault(p["Name"].rsplit("/", 1)[1].upper(), p["Value"])
+            n += 1
+    return n
+
+
 @lru_cache
 def get_settings() -> Settings:
+    if os.environ.get("DAYBOOK_ENV") == "prod":
+        load_ssm_secrets(os.environ.get("SSM_PREFIX", "/daybook"))
     return Settings()

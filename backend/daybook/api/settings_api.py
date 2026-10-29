@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -12,9 +13,11 @@ from pydantic import BaseModel
 from daybook.api.deps import ApiError, app_dep, current_user, now_dep, owner_only
 from daybook.engine.app import App, User
 from daybook.memory import export, repo
+from daybook.obs.log import log_event
 from daybook.push.reminders import DEFAULT_REMINDER
 
 router = APIRouter()
+log = logging.getLogger(__name__)
 
 DEFAULTS: dict[str, Any] = {
     "reminder": {**DEFAULT_REMINDER, "enabled": False},
@@ -90,7 +93,19 @@ def put_settings(body: dict, app: App = Depends(app_dep), user: User = Depends(c
             )
 
     app.vault(user).write(write)
-    return read_settings(app, user)
+    out = read_settings(app, user)
+    names = [n for n in app.settings.reminder_schedules.split(",") if n]
+    if names and user.role == "owner" and (rem or profile):
+        from daybook.push.schedules import sync_reminder_schedules
+
+        try:
+            moved = sync_reminder_schedules(names, out["reminder"], out["profile"]["timezone"])
+            log_event(event="reminder_schedules", schedules=moved)
+        except Exception:
+            log.exception(
+                "reminder schedule sync failed"
+            )  # settings are saved; times stay as before
+    return out
 
 
 class PushSub(BaseModel):

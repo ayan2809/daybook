@@ -86,6 +86,18 @@ IDLE_HIDDEN_SEC = 120  # a hidden page with no new turn for this long ends the s
 STALE_SEC = 15 * 60
 
 
+def is_stale(s, now: datetime) -> bool:
+    """Hidden for 2 min with no newer turn, or older than its limit + 15 min."""
+    hidden = s.flags.get("hidden_at")
+    last = datetime.fromisoformat(s.turns[-1].created_at if s.turns else s.started_at)
+    idle = (
+        bool(hidden)
+        and datetime.fromisoformat(hidden) >= last
+        and (now - datetime.fromisoformat(hidden)).total_seconds() > IDLE_HIDDEN_SEC
+    )
+    return idle or s.elapsed(now) > s.limit_sec + STALE_SEC
+
+
 async def cleanup_stale_sessions(app: App, now: datetime) -> dict:
     """End sessions that were left open: hidden for 2 min, or older than limit + 15 min. Also
     retries finalizes that were queued by the spend breaker or that failed."""
@@ -106,18 +118,9 @@ async def cleanup_stale_sessions(app: App, now: datetime) -> dict:
         sid = conductor.active_pointer(app, user)
         if sid:
             loaded = st.load(app.store, prefix, sid)
-            if loaded and loaded[0].status == "active":
-                s = loaded[0]
-                hidden = s.flags.get("hidden_at")
-                last = datetime.fromisoformat(s.turns[-1].created_at if s.turns else s.started_at)
-                idle = (
-                    bool(hidden)
-                    and datetime.fromisoformat(hidden) >= last
-                    and (now - datetime.fromisoformat(hidden)).total_seconds() > IDLE_HIDDEN_SEC
-                )
-                if idle or s.elapsed(now) > s.limit_sec + STALE_SEC:
-                    await conductor.end_session(app, user, sid, "idle", now)
-                    ended += 1
+            if loaded and loaded[0].status == "active" and is_stale(loaded[0], now):
+                await conductor.end_session(app, user, sid, "idle", now)
+                ended += 1
         if user.role == "owner":
             for key in app.store.list(f"{prefix}sessions/")[-20:]:
                 loaded = st.load(app.store, prefix, key.rsplit("/", 1)[1][:-5])

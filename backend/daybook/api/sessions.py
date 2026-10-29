@@ -17,6 +17,7 @@ from daybook.engine.conductor import SessionError
 from daybook.memory import repo
 from daybook.obs.log import log_event
 from daybook.voice import tts as tts_mod
+from daybook.worker import is_stale
 
 router = APIRouter(dependencies=[Depends(rate_limit)])
 
@@ -32,7 +33,7 @@ def _suggest(user: User, view: dict) -> list[str]:
 
 
 @router.get("/today")
-def today(
+async def today(
     app: App = Depends(app_dep),
     user: User = Depends(current_user),
     now: datetime = Depends(now_dep),
@@ -53,6 +54,9 @@ def today(
     if active:
         loaded = st.load(app.store, user.prefix, active)
         if not loaded or loaded[0].status != "active":
+            active = None
+        elif is_stale(loaded[0], now):  # no 15-minute sweep in prod: clean up on open (DB-27)
+            await conductor.end_session(app, user, active, "idle", now)
             active = None
     # sessions finished today but not yet in the vault count as reflected too
     reflected = d.isoformat() in done
