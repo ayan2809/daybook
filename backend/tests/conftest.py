@@ -17,3 +17,7 @@ def _fresh_rate_limits():
 
     deps._general.state.clear()
     deps._login.state.clear()
+    real_demo = deps._demo
+    deps._demo = deps.TokenBucket(rate_per_min=600, burst=600)  # tests start many demos
+    yield
+    deps._demo = real_demo

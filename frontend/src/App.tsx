@@ -37,7 +37,9 @@ function RequireRole({ owner = false, children }: { owner?: boolean; children: R
 function Home() {
   const { me, loading } = useMe();
   if (loading) return <Loading full />;
-  if (me?.role) return <Navigate to="/today" replace />;
+  // Accounts go straight to their day. Signed-out and demo visitors see the landing page, so a
+  // leftover demo cookie never hides sign-in (DB-31).
+  if (me?.role === "owner" || me?.role === "user") return <Navigate to="/today" replace />;
   return <Landing />;
 }
 

@@ -700,7 +700,16 @@ Cost per call comes from `obs/pricing.yaml`. Prices were last checked on 2026-10
   `POST /sessions/{id}/end`, because `sendBeacon` can't set headers (DB-11).
 - **Origin lock:** when `ORIGIN_VERIFY` is set, requests must carry the secret `X-Origin-Verify`
   header that CloudFront adds. This stops anyone calling the Lambda URL directly.
-- **Rate limits:** token buckets, 120 requests a minute with a burst of 40.
+- **Private by default (DB-31):** the `guard` middleware refuses any `/api/*` request without a
+  valid signed session (401) unless the route is in `main.PUBLIC` (health, me, the three auth
+  routes, demo start). A new route is therefore private even if it forgets its `Depends`, and
+  `tests/test_security.py` sweeps every route with no cookie and with a forged one. The API
+  docs and OpenAPI schema are off in production.
+- **Rate limits:** token buckets per Lambda instance: 120 requests a minute (burst 40) per
+  session, 5 sign-ins a minute and 3 demo starts a minute per IP, plus a durable cap of 100 new
+  demo sandboxes a day. Behind CloudFront the Lambda only sees CloudFront's IP, so a CloudFront
+  Function (`daybook-viewer-ip`) writes the viewer's IP into `X-Viewer-IP`; the app trusts it
+  only on requests that carry the `X-Origin-Verify` secret.
 - **Roles:** `account_only` (owner or user) guards push, exports and data delete; `owner_only`
   guards Admin. Every request reads and writes only the signed-in user's own prefix, so no account
   (or demo) can reach another's data. Deleting data as a `user` also removes the account record and

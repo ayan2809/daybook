@@ -139,6 +139,13 @@ class DemoCaps:
             ),
         }
 
+    def new_sandbox(self, now: datetime) -> bool:
+        """Count a new demo sandbox. False when today's cap is reached."""
+        if self._day(now).read().get("sandboxes", 0) >= self.s.demo_daily_sandboxes:
+            return False
+        self._day(now).add(sandboxes=1)
+        return True
+
     def take(self, sandbox_id: str, what: str, now: datetime) -> bool:
         """Use one session or ask. False when a cap is hit (→ replay mode)."""
         left = self.usage(sandbox_id, now)[f"{what}_left"]

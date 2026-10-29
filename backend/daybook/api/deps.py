@@ -164,15 +164,30 @@ class TokenBucket:
 
 _general = TokenBucket(rate_per_min=120, burst=40)
 _login = TokenBucket(rate_per_min=5, burst=5)
+_demo = TokenBucket(rate_per_min=3, burst=3)
+
+
+def client_ip(request: Request) -> str:
+    """The viewer's IP. Behind CloudFront the Lambda only sees CloudFront's address, so a
+    CloudFront Function writes the viewer IP into X-Viewer-IP (overwriting anything the client
+    sent). It is trusted only when the request also proved it came through CloudFront."""
+    app = get_app()
+    if app.settings.origin_verify:
+        return request.headers.get("x-viewer-ip") or "unknown"
+    return request.client.host if request.client else "anon"
 
 
 def rate_limit(request: Request) -> None:
-    key = request.cookies.get(COOKIE) or (request.client.host if request.client else "anon")
+    key = request.cookies.get(COOKIE) or client_ip(request)
     if not _general.take(key):
         raise ApiError(429, "rate_limited", "Too many requests. Slow down a little.")
 
 
 def login_rate_limit(request: Request) -> None:
-    key = request.client.host if request.client else "anon"
-    if not _login.take(key):
+    if not _login.take(client_ip(request)):
         raise ApiError(429, "rate_limited", "Too many sign-in attempts. Try again in a minute.")
+
+
+def demo_rate_limit(request: Request) -> None:
+    if not _demo.take(client_ip(request)):
+        raise ApiError(429, "rate_limited", "Too many demos started. Try again in a minute.")

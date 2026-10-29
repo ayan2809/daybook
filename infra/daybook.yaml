@@ -289,6 +289,23 @@ Resources:
           return req;
         }
 
+  # The Lambda only sees CloudFront's IP. Stamp the viewer's IP for rate limits (DB-31); this
+  # overwrites any X-Viewer-IP the client sent, and the app trusts it only with X-Origin-Verify.
+  ViewerIp:
+    Type: AWS::CloudFront::Function
+    Properties:
+      Name: daybook-viewer-ip
+      AutoPublish: true
+      FunctionConfig:
+        Comment: Pass the viewer IP to the API
+        Runtime: cloudfront-js-2.0
+      FunctionCode: |
+        function handler(event) {
+          var req = event.request;
+          req.headers['x-viewer-ip'] = { value: event.viewer.ip };
+          return req;
+        }
+
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -333,6 +350,9 @@ Resources:
             CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad  # CachingDisabled
             OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac  # AllViewerExceptHostHeader
             ResponseHeadersPolicyId: 67f7725c-6f97-4210-82d7-5512b31e9d03
+            FunctionAssociations:
+              - EventType: viewer-request
+                FunctionARN: !GetAtt ViewerIp.FunctionMetadata.FunctionARN
 
   WebBucketPolicy:
     Type: AWS::S3::BucketPolicy

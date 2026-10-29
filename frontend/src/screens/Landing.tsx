@@ -12,6 +12,7 @@ export function Landing() {
   const [error, setError] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const clientId = me?.features.google_client_id ?? null;
+  const inDemo = me?.role === "demo";
 
   async function run(kind: "demo" | "google", action: () => Promise<unknown>) {
     setBusy(kind);
@@ -62,9 +63,15 @@ export function Landing() {
             ) : (
               <p className="small muted">Google sign-in isn't set up on this server yet.</p>
             )}
-            <button className="btn btn-xl" onClick={() => void run("demo", api.demoStart)} disabled={busy !== null}>
-              {busy === "demo" ? "Setting up the demo…" : "Try the demo, no sign-in"}
-            </button>
+            {inDemo ? (
+              <button className="btn btn-xl" onClick={() => navigate("/today")} disabled={busy !== null}>
+                Continue the demo
+              </button>
+            ) : (
+              <button className="btn btn-xl" onClick={() => void run("demo", api.demoStart)} disabled={busy !== null}>
+                {busy === "demo" ? "Setting up the demo…" : "Try the demo, no sign-in"}
+              </button>
+            )}
             {busy === "google" && <p className="small">Signing you in…</p>}
             {error && <p className="error small">{error}</p>}
             <p className="small muted landing-note">

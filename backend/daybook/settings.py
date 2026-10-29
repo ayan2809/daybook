@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     demo_session_limit_sec: int = 180
     abstain_cosine: float = 0.35
     demo_daily_sessions: int = 15
+    demo_daily_sandboxes: int = 100  # new demo sandboxes per IST day, all visitors (DB-31)
     demo_daily_asks: int = 30
     demo_sandbox_sessions: int = 2
     demo_sandbox_asks: int = 10

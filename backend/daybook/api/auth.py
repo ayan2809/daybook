@@ -13,6 +13,7 @@ from daybook.api.deps import (
     app_dep,
     check_owner_key,
     current_user,
+    demo_rate_limit,
     login_rate_limit,
     now_dep,
     optional_user,
@@ -93,10 +94,12 @@ def me(
     return out
 
 
-@router.post("/demo/start")
+@router.post("/demo/start", dependencies=[Depends(demo_rate_limit)])
 async def demo_start(
     response: Response, app: App = Depends(app_dep), now: datetime = Depends(now_dep)
 ):
+    if not app.demo_caps.new_sandbox(now):
+        raise ApiError(429, "demo_cap", "The demo is full for today. Please try again tomorrow.")
     user = await demo.create_sandbox(app, now)
     set_cookie(response, app, "demo", user.sandbox_id)
     return {"role": "demo", "sandbox_id": user.sandbox_id}

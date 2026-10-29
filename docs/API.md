@@ -10,6 +10,7 @@ Frontend and backend both follow this file. Change it only together with both si
   timestamps are ISO 8601 UTC strings.
 - Auth is a cookie (`db_session`, HttpOnly, `Path=/api`). The frontend sends requests with
   `credentials: "same-origin"` and never reads the cookie.
+- **Private by default (DB-31):** every `/api/*` request needs a valid signed session cookie (account or demo) and gets 401 otherwise, before any route runs. The only public routes are `GET /api/health`, `GET /api/me`, `POST /api/auth/login`, `POST /api/auth/google`, `POST /api/auth/logout` and `POST /api/demo/start` (3 a minute per IP, 100 new sandboxes a day; 429 `rate_limited` / `demo_cap`). `/api/docs` and `/api/openapi.json` exist only outside production.
 - **Every mutating request (POST/PUT/PATCH/DELETE) must send `X-Requested-With: daybook`**, or it gets
   403. Exception: `POST /api/sessions/{id}/end` (so `navigator.sendBeacon` works).
 - Errors always look like `{"error": {"code": "<code>", "message": "<human text>", ...extra}}`.
