@@ -743,7 +743,7 @@ Vite 8, React 19, TypeScript, react-router 8, lucide-react icons and vite-plugin
 | `/remind` | quick reminder of recent work |
 | `/settings` | reminders and push, session length, voice, exports (owner), delete data |
 | `/admin`, `/admin/sessions/:id` | owner-only dashboards |
-| `/` (signed out) | landing page: Google sign-in (also sign-up), the demo, an owner-key link |
+| `/` (signed out) | one-screen landing (DB-30): pitch, a three-step example of a reflection, three facts, Google sign-in (also sign-up), the demo, an owner-key link |
 
 The Reflect screen (`screens/reflect/Reflect.tsx`) works like this:
 

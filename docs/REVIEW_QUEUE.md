@@ -50,14 +50,15 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
   `DAYBOOK_SCHEDULES=true make deploy-backend` (and `DAYBOOK_ALERT_EMAIL=… ` for the budget alert).
   *Assumed:* until then, no reminder pushes and no nightly cleanup (opening Today still cleans up).
 
-- [ ] **RQ-14 · Google OAuth client (for sign-in, DB-29).** In Google Cloud Console → APIs & Services →
-  Credentials → Create OAuth client ID → *Web application*. Authorized JavaScript origins:
-  `https://d2u2cnea4n3vkc.cloudfront.net` and `http://localhost:5173` (no redirect URIs needed). OAuth
-  consent screen: External, app name Daybook, scopes `openid email profile` only. Then in `.env`:
-  `GOOGLE_CLIENT_ID=…apps.googleusercontent.com`, `OWNER_EMAILS=<your Google email>`, optionally
-  `ALLOWED_EMAILS=…` (empty = anyone can sign up, max 25). Run `make secrets` and
-  `make deploy`. *Assumed:* until then the landing page says Google sign-in isn't set up; the owner key
-  and the demo still work.
+- [ ] **RQ-14 · Google OAuth client (for sign-in, DB-29).** Console only: gcloud can't create this kind of
+  client (DB-30). Project: the Gemini key's, most likely `gen-lang-client-0623498178`. In Google Cloud
+  Console → Google Auth Platform: (1) *Branding*: app name Daybook, your support email. (2) *Audience*:
+  External; **Publish app** so anyone can sign in (with only `openid email profile`, no Google review
+  is needed); in Testing only the test users you list can sign in. (3) *Clients* → Create client → Web
+  application, Authorized JavaScript origins `https://d2u2cnea4n3vkc.cloudfront.net` and
+  `http://localhost:5173`, no redirect URIs. Then in `.env`: `GOOGLE_CLIENT_ID=…apps.googleusercontent.com`,
+  `OWNER_EMAILS=<your Google email>`, optionally `ALLOWED_EMAILS=…`; run `make secrets` and `make deploy`.
+  *Assumed:* until then the landing page says Google sign-in isn't set up; the owner key and the demo work.
 
 ## Device / manual tests (can't be done by the agent)
 
