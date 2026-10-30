@@ -37,9 +37,27 @@ Wispr Flow is both the input to the product and how I built it. Every reflection
 
 ---
 
-### Additional Helpful Links for Judges
-- **GitHub Repository:** https://github.com/ayan2809/daybook
+### 5. Your feedback on Wispr Flow *(required)*
+> *Prompt: Tell us what worked well, what was frustrating, and what features you wish existed.*
+
+```text
+What worked exceptionally well:
+1. Frictionless dictation via the Fn key: Dictating stream-of-consciousness prompts into Claude Code and Daybook reflection turns was effortless. Flow's speed and punctuation formatting never broke my mental flow.
+2. Scratchpad & Note Taker on mobile: This was the hidden superpower during the build. Being able to verbally capture ideas or architecture fixes on my phone while away from my desk and hand them cleanly to my AI coding agent later saved hours of context switching.
+3. Accurate handling of technical vocabulary: Flow handled code terminology, acronyms, and numerical expressions far better than standard OS dictation.
+
+What could be improved / wishlist:
+1. Native terminal integration: Direct piping or a CLI trigger for Flow (e.g. stream dictation into bash or agent CLI prompts without manual paste) would make developer workflows lightning-fast.
+2. iOS keyboard focus retention: On iOS PWAs, switching between mobile keyboards can occasionally trigger blur/pagehide signals. Tighter mobile keyboard state retention would make voice web apps even smoother.
+3. Project-specific vocabulary profiles: The ability to configure a custom glossary per project (e.g. repo names, internal package names) so domain terms are always captured with 100% precision on the first pass.
+```
+
+---
+
+### 6. Social & Project Links
+- **Twitter / X Feedback Post:** https://x.com/ayannn01/status/2114248494710227381?a=sIw5rwAXcdtlM0t3c-k&s=20
 - **Dev.to Article:** https://dev.to/banana-coder/i-lost-the-numbers-behind-nine-months-of-work-so-i-built-a-voice-journal-that-asks-for-them-51ag
 - **Hashnode Article:** https://banana-coder.hashnode.dev/daybook-a-voice-journal-where-code-owns-the-numbers-and-only-you-hold-the-key
-- **LinkedIn Post:** (Paste your published LinkedIn link here)
-
+- **GitHub Repository:** https://github.com/ayan2809/daybook
+- **YouTube Demo Video:** https://youtu.be/VZzfZ93o-I4
+- **Live CloudFront Web App:** https://d2u2cnea4n3vkc.cloudfront.net
