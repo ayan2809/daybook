@@ -16,5 +16,5 @@ evals/results/*-fake.json
 evals/results/report.md
 frontend/dev-dist/
 
-# launch material (video, posts drafts): kept out of git
-launch/
+# launch material: video binaries and assets kept out of git
+launch/video/

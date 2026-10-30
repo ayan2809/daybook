@@ -1,6 +1,6 @@
 # Daybook
 
-**[▶ Demo video](https://youtu.be/DEMO_VIDEO_ID)** · **[Try it live](https://d2u2cnea4n3vkc.cloudfront.net)**
+**[▶ Demo video](https://youtu.be/VZzfZ93o-I4)** · **[Try it live](https://d2u2cnea4n3vkc.cloudfront.net)**
 (the demo needs no sign-in)
 
 <p align="center">

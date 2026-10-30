@@ -1251,7 +1251,7 @@ locally and in demo sandboxes; the server ignores it for the owner.
 - [ ] C3–C6, D1–D10, E1–E4, F1–F2, I1–I2, L1–L7, M1–M6 pass on the live URL
 - [ ] Ayan has reflected on every workday since Oct 26 (real usage numbers go in the README)
 - [ ] Wispr usage card screenshot (Oct 16–30) saved to `assets/wispr_usage_card.png`
-- [ ] Video ≤ 2:00, unlisted on YouTube; link in the README and the submission
+- [x] Video ≤ 2:00, unlisted on YouTube; link in the README and the submission (https://youtu.be/VZzfZ93o-I4)
 - [ ] README answers the six questions; AI use disclosed; `SUBMISSION_DETAILS.md` complete
 - [ ] Demo caps and the $2/day breaker set; the Admin spend line matches the Gemini and ElevenLabs usage pages; billing alerts on
 - [ ] Submitted before 9 PM IST
