@@ -1,6 +1,6 @@
 ---
 title: "I lost the numbers behind nine months of work, so I built a voice journal that asks for them"
-published: false
+published: true
 description: "Daybook is a five-minute evening voice conversation that turns your workday into a searchable, resume-ready memory, encrypted with a key only you hold."
 tags: ai, webdev, privacy, productivity
 cover_image: ""

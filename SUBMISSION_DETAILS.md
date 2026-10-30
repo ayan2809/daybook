@@ -39,6 +39,7 @@ Wispr Flow is both the input to the product and how I built it. Every reflection
 
 ### Additional Helpful Links for Judges
 - **GitHub Repository:** https://github.com/ayan2809/daybook
-- **Dev.to Article:** (Paste your published Dev.to link here)
+- **Dev.to Article:** https://dev.to/banana-coder/i-lost-the-numbers-behind-nine-months-of-work-so-i-built-a-voice-journal-that-asks-for-them-51ag
 - **Hashnode Article:** (Paste your published Hashnode link here)
 - **LinkedIn Post:** (Paste your published LinkedIn link here)
+
