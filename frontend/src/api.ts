@@ -1,6 +1,7 @@
 // Typed fetch wrapper for every endpoint in docs/API.md.
 import { getItem, KEYS } from "./lib/storage";
 import type {
+  VaultState,
   AdminOverview,
   AdminSessionRow,
   AdminTrace,
@@ -61,6 +62,11 @@ export function setUnauthorizedHandler(fn: UnauthorizedHandler | null): void {
   onUnauthorized = fn;
 }
 
+let onLocked: (() => void) | null = null;
+export function setLockedHandler(fn: (() => void) | null): void {
+  onLocked = fn;
+}
+
 const MUTATING = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 function buildHeaders(method: string, hasBody: boolean, accept: string): Headers {
@@ -108,7 +114,8 @@ export async function rawRequest(
   });
   if (!res.ok) {
     const err = await parseError(res);
-    if (res.status === 401 && onUnauthorized && !path.startsWith("/api/auth/")) onUnauthorized();
+    if (res.status === 401 && onUnauthorized && !/^\/api\/(auth|vault)\//.test(path)) onUnauthorized();
+    if (res.status === 423 && onLocked) onLocked(); // the vault needs its key again
     throw err;
   }
   return res;
@@ -138,10 +145,16 @@ const enc = encodeURIComponent;
 
 export const api = {
   health: (warm = false) => request<Health>("GET", `/api/health${warm ? "?warm=1" : ""}`),
-  login: (owner_key: string) => request<{ role: "owner" }>("POST", "/api/auth/login", { owner_key }),
+  login: (owner_key: string) =>
+    request<{ role: "owner"; vault: VaultState }>("POST", "/api/auth/login", { owner_key }),
   /** Google sign-in; the first sign-in creates the account. */
   loginGoogle: (credential: string) =>
-    request<{ role: "owner" | "user" }>("POST", "/api/auth/google", { credential }),
+    request<{ role: "owner" | "user"; vault: VaultState }>("POST", "/api/auth/google", { credential }),
+  /** The sealed vault (DB-32): the browser makes the recovery key; the server never stores it. */
+  vaultSetup: (recovery_key: string) => request<{ vault: "open" }>("POST", "/api/vault/setup", { recovery_key }),
+  vaultUnlock: (recovery_key: string) =>
+    request<{ vault: "open" }>("POST", "/api/vault/unlock", { recovery_key }),
+  vaultReset: () => request<{ vault: "new" }>("POST", "/api/vault/reset", { confirm: "start over" }),
   logout: () => request<{ ok: true }>("POST", "/api/auth/logout"),
   me: () => request<Me>("GET", "/api/me"),
   demoStart: () => request<{ role: "demo"; sandbox_id: string }>("POST", "/api/demo/start"),
@@ -225,6 +238,7 @@ export const api = {
   pushUnsubscribe: (endpoint: string) =>
     request<{ ok: true }>("DELETE", "/api/push/subscribe", { endpoint }),
   pushTest: () => request<{ sent: number }>("POST", "/api/push/test"),
+  exportBrain: async () => (await rawRequest("GET", exportUrls.brain, undefined, {}, "text/markdown")).text(),
   deleteAllData: () => request<{ ok: true }>("POST", "/api/data/delete", { confirm: "delete" }),
 
   // -------------------------------------------------------------------------
@@ -237,6 +251,7 @@ export const api = {
 
 /** Export download links (plain GETs; the browser sends the cookie). */
 export const exportUrls = {
+  brain: "/api/export/brain",
   resumeAsCode: (since?: string) => `/api/export/resume-as-code${qs({ since })}`,
   markdown: "/api/export/markdown",
   sqlite: "/api/export/sqlite",

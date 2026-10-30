@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from daybook.agents.base import Deps
@@ -26,11 +26,18 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class User:
-    uid: str  # "owner", "g<24 hex>" (a Google account, DB-29) or "demo-<sandbox>"
+    uid: str  # folder id "v<24 hex>" (an account, DB-32), "owner" (offline tools) or "demo-<sb>"
     role: str  # owner (Ayan: admin pages) | user (any other account) | demo
-    prefix: str  # blob prefix: "users/owner/", "users/<uid>/" or "demo/<sandbox>/"
+    prefix: str  # blob prefix: "users/<folder id>/", "users/owner/" or "demo/<sandbox>/"
     sandbox_id: str | None = None
     email: str | None = None
+    aid: str | None = None  # account record id: "owner" or a keyed hash of the Google sub
+    key: bytes | None = field(default=None, repr=False)  # the vault key; None = not sealed
+
+    @property
+    def locked(self) -> bool:
+        """An account whose vault isn't open in this request (no key yet)."""
+        return self.is_account and self.aid is not None and self.key is None
 
     @property
     def vault_key(self) -> str:
@@ -42,13 +49,19 @@ class User:
         return self.role in ("owner", "user")
 
 
+# The unsealed owner: offline tools only (terminal chat, evals, engine tests). Through the API every
+# account, the owner's included, is sealed with its own key (DB-32).
 OWNER = User("owner", "owner", "users/owner/")
 
 
-def account_user(uid: str, email: str | None = None) -> User:
-    if uid == OWNER.uid:
-        return User(OWNER.uid, OWNER.role, OWNER.prefix, email=email)
-    return User(uid, "user", f"users/{uid}/", email=email)
+def account_user(role: str, aid: str, key: bytes | None, email: str | None = None) -> User:
+    """A signed-in account. With its vault key it maps to its sealed folder; without, it's locked."""
+    if key is None:
+        return User("", role, "", email=email, aid=aid)
+    from daybook.storage.sealed import folder_id
+
+    fid = folder_id(key)
+    return User(fid, role, f"users/{fid}/", email=email, aid=aid, key=key)
 
 
 def demo_user(sandbox_id: str) -> User:
@@ -86,6 +99,7 @@ class App:
             s.demo_budget_usd,
             s.users_budget_usd,
             s.user_daily_budget_usd,
+            store_for=self.store_for,
         )
         self.demo_caps = DemoCaps(self.store, s)
         self._tasks: set[asyncio.Task] = set()
@@ -102,8 +116,18 @@ class App:
 
         return HeuristicFakeLLM()
 
+    def store_for(self, user: User) -> BlobStore:
+        """The user's view of storage: sealed with their key, or plain (demo, offline tools)."""
+        if user.key is None:
+            if user.locked:
+                raise RuntimeError("vault is locked")
+            return self.store
+        from daybook.storage.sealed import sealed_for
+
+        return sealed_for(self.store, user.key)
+
     def vault(self, user: User) -> Vault:
-        return self.vaults.get(user.vault_key)
+        return self.vaults.get(user.vault_key, self.store_for(user))
 
     # ------------------------------------------------------------------ async jobs
 
@@ -113,7 +137,7 @@ class App:
         if self.settings.worker_function_name and not self.settings.is_local:
             import boto3
 
-            boto3.client("lambda").invoke(
+            boto3.client("lambda").invoke(  # an account's key is in `event`, encrypted (DB-32)
                 FunctionName=self.settings.worker_function_name,
                 InvocationType="Event",
                 Payload=json.dumps(event).encode(),

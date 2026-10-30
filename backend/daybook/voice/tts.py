@@ -1,6 +1,7 @@
 """Voice out (plan 9.2): ElevenLabs, or Gemini TTS as the fallback (DB-03), or a silent fake.
 
-Audio is cached in blob storage by sha256(provider|model|voice|text).
+Audio is cached in blob storage by sha256(provider|model|voice|text): shared `tts-cache/` for the
+demo, and inside the account's sealed folder for an account (the lines echo what the user said).
 """
 
 from __future__ import annotations
@@ -92,14 +93,14 @@ def make_tts(settings: Settings) -> TTS | None:
     return FakeTTS()
 
 
-def cache_key(tts: TTS, text: str) -> str:
+def cache_key(tts: TTS, text: str, prefix: str = "") -> str:
     h = hashlib.sha256(f"{tts.name}|{tts.model}|{tts.voice}|{text}".encode()).hexdigest()
-    return f"tts-cache/{h}.{'mp3' if tts.name == 'elevenlabs' else 'wav'}"
+    return f"{prefix}tts-cache/{h}.{'mp3' if tts.name == 'elevenlabs' else 'wav'}"
 
 
-async def speak(tts: TTS, store, text: str) -> Audio:
+async def speak(tts: TTS, store, text: str, prefix: str = "") -> Audio:
     spoken = for_speech(text)
-    key = cache_key(tts, spoken)
+    key = cache_key(tts, spoken, prefix)
     hit = store.get(key)
     if hit is not None:
         mime = "audio/mpeg" if key.endswith(".mp3") else "audio/wav"

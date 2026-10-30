@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from daybook.engine.app import set_app
 from daybook.main import api
-from tests.helpers import make_app
+from tests.helpers import make_app, open_vault
 
 H = {"X-Requested-With": "daybook"}
 NOW = {"X-Debug-Now": "2026-10-27T19:05:00+05:30"}  # a Tuesday
@@ -53,6 +53,9 @@ def test_auth_rules(client):
         client.post("/api/auth/login", headers=H, json={"owner_key": "k3y"}).json()["role"]
         == "owner"
     )
+    r = client.get("/api/admin/sessions")  # signed in, but the vault is still locked (DB-32)
+    assert r.status_code == 423 and r.json()["error"]["code"] == "vault_locked"
+    open_vault(client)
     assert client.get("/api/admin/sessions").status_code == 200
 
 
@@ -189,6 +192,7 @@ def test_demo_caps_replay(client):
 
 def test_settings_roundtrip_and_validation(client):
     client.post("/api/auth/login", headers=H, json={"owner_key": "k3y"})
+    open_vault(client)
     s = client.put(
         "/api/settings",
         headers=H,

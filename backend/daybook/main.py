@@ -120,7 +120,10 @@ async def http_error(_: Request, exc: StarletteHTTPException):
 
 @api.exception_handler(Exception)
 async def unhandled(_: Request, exc: Exception):
-    log.exception("unhandled error")
+    if get_app().settings.is_local:
+        log.exception("unhandled error")
+    else:  # no message or traceback in prod logs: either could quote a user's words (DB-32)
+        log_event(event="unhandled", error=type(exc).__name__)
     return error_response(500, "internal", "Something went wrong on our side.")
 
 
@@ -128,7 +131,7 @@ async def unhandled(_: Request, exc: Exception):
 def health(request: Request, warm: int = 0):
     app = get_app()
     user = optional_user(request, app) if warm else None
-    if user is not None:  # warm only the caller's own vault; anonymous calls do no work
+    if user is not None and not user.locked:  # warm only the caller's own open vault
         with app.vault(user).read():
             pass
     return {

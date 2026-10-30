@@ -4,7 +4,7 @@ Read this first. It says what exists, what works, how to run it and what's next.
 works (low-level architecture), read the root `README.md`. Update it at the end of
 every working block. Owner of the build: the main implementation agent; subagents only read it.
 
-**Last updated:** 2026-10-29 · **Branch:** `feature/initial-implementation`
+**Last updated:** 2026-10-30 · **Branch:** `feature/initial-implementation`
 **State:** M1 (engine), M2 (PWA core) and M3 (memory features) work locally, in fake mode and against
 live Gemini. Infra go-ahead given 2026-10-29: storage stack deployed, app stack waits for secrets.
 
@@ -68,6 +68,8 @@ Legend: ✅ done and tested · 🟡 partial · ⬜ not started
 | Traces, Admin API, session judge | ✅ | Admin UI built by the frontend subagent; checked only by type-check |
 | Demo sandbox, seed, caps, replay | 🟡 | persona: Ayan at Kestrel Travel, fictional, plain words (DB-25); replay has no recorded session yet (RQ-07) |
 | Accounts (Google sign-in = sign-up, per-user vaults, DB-29) | 🟡 | live since `aa23a48` (2026-10-29): client id in SSM, Google's button loads on the prod origin; a real Google sign-in by Ayan is the last check (RQ-14) |
+| Sealed vaults (DB-32) | ✅ | per-account AES-256-GCM under a browser-made recovery key; no email/name stored; folder unlinkable; `tests/test_privacy.py` scans every stored byte for plaintext; browser-tested locally (setup, wrong key, second device, reload) |
+| Memory export for AI (DB-33) | ✅ | `GET /api/export/brain`, Settings "Copy memory" / "Download .md", demo included |
 | API security (DB-31) | ✅ | prod: every private route 401 without a cookie or with a forged one (from the app, before validation); docs/OpenAPI off; Function URL direct → 403; viewer-IP CloudFront Function overwrites spoofed values; demo start 429 after the per-IP burst |
 | Frontend PWA | ✅ | all screens; browser-tested flows above; not yet on a real phone |
 | Eval runner + data | 🟡 | fake mode in CI; live run waits for sign-off (RQ-05); `sim` suite (P1) not built |

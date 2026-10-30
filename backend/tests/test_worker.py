@@ -6,33 +6,34 @@ from zoneinfo import ZoneInfo
 
 from daybook.engine import conductor
 from daybook.engine import state as st
-from daybook.engine.app import OWNER
-from daybook.memory import repo
+from daybook.engine.app import demo_user
+from daybook.push import notify
 from daybook.push.reminders import tick
 from daybook.push.webpush import FakeSender
 from daybook.worker import cleanup_stale_sessions
-from tests.helpers import at, make_app
+from tests.helpers import at, make_app, open_vault
 
 IST = ZoneInfo("Asia/Kolkata")
 
 
-def _setup(app, enabled=True):
-    def w(conn):
-        repo.upsert_profile(conn, display_name="Ayan", timezone="Asia/Kolkata")
-        repo.put_setting(conn, "app_settings", {"reminder": {"enabled": enabled}})
-        conn.execute(
-            "INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at)"
-            " VALUES ('https://push/ok', 'k', 'a', 'now'), ('https://push/gone', 'k', 'a', 'now')"
-        )
-        iid = repo.create_item(
-            conn,
-            dict(
-                kind="achievement", occurred_on="2026-10-26", title="X", what="x", source_quote="x"
-            ),
-        )
-        repo.create_pending(conn, iid, "metric", "How many?")
+PREFIX = "users/v0123456789abcdef01234567/"
 
-    app.vault(OWNER).write(w)
+
+def _setup(app, enabled=True):
+    """The reminder record (DB-32): all a reminder can see while the user is away."""
+    notify.update(
+        app,
+        PREFIX,
+        lambda r: r.update(
+            tz="Asia/Kolkata",
+            reminder={"enabled": enabled},
+            pending=1,
+            subs=[
+                {"endpoint": "https://push/ok", "p256dh": "k", "auth": "a"},
+                {"endpoint": "https://push/gone", "p256dh": "k", "auth": "a"},
+            ],
+        ),
+    )
 
 
 def test_reminder_tick(tmp_path):
@@ -40,66 +41,47 @@ def test_reminder_tick(tmp_path):
     _setup(app)
     sender = FakeSender()
     sender.gone_endpoints.add("https://push/gone")
-    v = app.vault(OWNER)
     tue_1905 = datetime(2026, 10, 27, 19, 5, tzinfo=IST)
-    assert (
-        tick(v, app.store, OWNER.prefix, sender, tue_1905 - timedelta(hours=1))["reason"]
-        == "not due"
-    )
-    r = tick(v, app.store, OWNER.prefix, sender, tue_1905)
+    assert tick(app, PREFIX, sender, tue_1905 - timedelta(hours=1))["reason"] == "not due"
+    r = tick(app, PREFIX, sender, tue_1905)
     assert r == {"sent": 1, "nudge": "first", "reason": "sent", "deleted": 1}
     assert "1 number to confirm" in sender.sent[0][1]["body"]
-    assert tick(v, app.store, OWNER.prefix, sender, tue_1905)["reason"] == "already sent"
-    with v.read() as conn:
-        assert conn.execute("SELECT count(*) FROM push_subscriptions").fetchone()[0] == 1
-    r = tick(v, app.store, OWNER.prefix, sender, tue_1905.replace(hour=21))
+    assert tick(app, PREFIX, sender, tue_1905)["reason"] == "already sent"
+    assert len(notify.load(app, PREFIX)["subs"]) == 1
+    r = tick(app, PREFIX, sender, tue_1905.replace(hour=21))
     assert r["nudge"] == "second" and r["sent"] == 1
     sat = datetime(2026, 10, 31, 19, 5, tzinfo=IST)
-    assert tick(v, app.store, OWNER.prefix, sender, sat)["reason"] == "not a reminder day"
+    assert tick(app, PREFIX, sender, sat)["reason"] == "not a reminder day"
+    # sealed with a server key: the push endpoints aren't readable in the bucket
+    assert b"push/ok" not in app.store.get(notify.key(PREFIX)).data
+    assert notify.prefixes(app) == [PREFIX]
 
 
 def test_no_reminder_after_reflecting(tmp_path):
     app = make_app(tmp_path)
     _setup(app)
-    app.vault(OWNER).write(
-        lambda c: repo.upsert_session(
-            c,
-            {
-                "id": "s1",
-                "mode": "guided",
-                "local_date": "2026-10-27",
-                "started_at": "x",
-                "status": "finalized",
-                "turn_count": 3,
-            },
-        )
-    )
-    r = tick(
-        app.vault(OWNER),
-        app.store,
-        OWNER.prefix,
-        FakeSender(),
-        datetime(2026, 10, 27, 19, 5, tzinfo=IST),
-    )
+    notify.update(app, PREFIX, lambda r: r.update(reflected="2026-10-27"))
+    r = tick(app, PREFIX, FakeSender(), datetime(2026, 10, 27, 19, 5, tzinfo=IST))
     assert r["reason"] == "already reflected"
 
 
 async def test_hidden_session_ends_after_two_minutes_unless_a_turn_follows(tmp_path):
     app = make_app(tmp_path)
-    s = await conductor.start_session(app, OWNER, "guided", at(0))
-    loaded, etag = st.load(app.store, OWNER.prefix, s.id)
+    u = demo_user("t1")  # the nightly cleanup covers demo sandboxes; accounts are sealed
+    s = await conductor.start_session(app, u, "guided", at(0))
+    loaded, etag = st.load(app.store, u.prefix, s.id)
     loaded.flags["hidden_at"] = conductor._iso(at(10))
-    st.save(app.store, OWNER.prefix, loaded, etag)
+    st.save(app.store, u.prefix, loaded, etag)
     assert (await cleanup_stale_sessions(app, at(60)))["ended"] == 0  # under 2 min
     # a turn arrives (the Wispr round trip came back): the hidden mark no longer counts
-    await conductor.handle_turn(app, OWNER, s.id, uuid.uuid4().hex, "I fixed the build.", 0, at(70))
+    await conductor.handle_turn(app, u, s.id, uuid.uuid4().hex, "I fixed the build.", 0, at(70))
     assert (await cleanup_stale_sessions(app, at(300)))["ended"] == 0
-    loaded, etag = st.load(app.store, OWNER.prefix, s.id)
+    loaded, etag = st.load(app.store, u.prefix, s.id)
     loaded.flags["hidden_at"] = conductor._iso(at(310))
-    st.save(app.store, OWNER.prefix, loaded, etag)
+    st.save(app.store, u.prefix, loaded, etag)
     assert (await cleanup_stale_sessions(app, at(500)))["ended"] == 1
     await app.drain()
-    assert st.load(app.store, OWNER.prefix, s.id)[0].status == "finalized"
+    assert st.load(app.store, u.prefix, s.id)[0].status == "finalized"
 
 
 # DB-27, DB-29: exact per-account reminder schedules instead of a 15-minute tick
@@ -188,11 +170,12 @@ def test_settings_save_moves_schedules(tmp_path, monkeypatch):
             assert (
                 c.post("/api/auth/login", headers=h, json={"owner_key": "k3y"}).status_code == 200
             )
+            open_vault(c)
             c.put("/api/settings", headers=h, json={"voice": False})
             assert calls == []  # nothing about reminders changed
             c.put("/api/settings", headers=h, json={"reminder": {"enabled": True, "time": "20:00"}})
             (uid, rem, tz), kw = calls[0]
-            assert uid == "owner" and rem["time"] == "20:00" and rem["enabled"]
+            assert uid.startswith("v") and rem["time"] == "20:00" and rem["enabled"]  # the folder
             assert tz == "Asia/Kolkata" and kw == {
                 "worker_arn": "arn:worker",
                 "role_arn": "arn:role",

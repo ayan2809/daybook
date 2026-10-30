@@ -2,7 +2,7 @@
 
 `spend/{YYYY-MM-DD}.json` (IST day) holds {total, demo, owner, user}, updated with If-Match and
 retried on conflict. Counts come from token estimates (obs/pricing.yaml). Other accounts (role
-`user`, DB-29) also have their own counter, `users/<uid>/spend/{day}.json`, and two caps: one per
+`user`, DB-29) also have their own counter, `users/<folder>/spend/{day}.json` (sealed), and two caps: one per
 account and one for all of them together, so strangers can never use up the owner's budget.
 """
 
@@ -60,8 +60,10 @@ class SpendBreaker:
         demo_budget: float,
         users_budget: float = 1.0,
         per_user_budget: float = 0.3,
+        store_for=None,
     ):
         self.store = store
+        self.store_for = store_for or (lambda who: store)
         self.daily = daily_budget
         self.demo = demo_budget
         self.users = users_budget
@@ -80,8 +82,9 @@ class SpendBreaker:
             "budget": self.daily,
         }
 
-    def _mine(self, uid: str, now: datetime) -> Counter:
-        return Counter(self.store, f"users/{uid}/spend/{ist_day(now)}.json")
+    def _mine(self, who, now: datetime) -> Counter:
+        """The account's own counter, sealed in its folder (DB-32)."""
+        return Counter(self.store_for(who), f"{who.prefix}spend/{ist_day(now)}.json")
 
     def add(self, who, cost: float, now: datetime) -> None:
         """`who` is a User (or a role string, for callers without one)."""
@@ -89,7 +92,7 @@ class SpendBreaker:
         if cost > 0:
             self._counter(now).add(total=cost, **{role: cost})
             if role == "user":
-                self._mine(who.uid, now).add(total=cost)
+                self._mine(who, now).add(total=cost)
 
     def status(self, who, now: datetime, estimate: float = 0.0) -> str:
         """ok | demo_replay | over"""
@@ -102,7 +105,7 @@ class SpendBreaker:
         if role == "user":
             if d["user"] + estimate >= self.users:
                 return "over"
-            if self._mine(who.uid, now).read().get("total", 0.0) + estimate >= self.per_user:
+            if self._mine(who, now).read().get("total", 0.0) + estimate >= self.per_user:
                 return "over"
         return "ok"
 

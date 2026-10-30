@@ -50,7 +50,7 @@ export function Landing() {
               <BellRing size={18} aria-hidden="true" /> An evening reminder on your phone
             </li>
             <li>
-              <Lock size={18} aria-hidden="true" /> Private to you. Export or delete anytime
+              <Lock size={18} aria-hidden="true" /> Encrypted with a key only you hold
             </li>
           </ul>
 

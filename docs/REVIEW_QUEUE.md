@@ -50,6 +50,15 @@ says what the agent assumed in the meantime. Newest at the bottom of each sectio
   `DAYBOOK_SCHEDULES=true make deploy-backend` (and `DAYBOOK_ALERT_EMAIL=… ` for the budget alert).
   *Assumed:* until then, no reminder pushes and no nightly cleanup (opening Today still cleans up).
 
+- [ ] **RQ-15 · Sealed vaults (DB-32), three things to know.**
+  1. **Save your recovery key.** The first Google sign-in on prod shows it once. Put it in your
+     password manager. Nobody can reset it, me included.
+  2. **Don't rotate `/daybook/session_signing_key`.** Account ids are derived from it, so rotating
+     it would make every account look new. A separate `account_pepper` SSM parameter would remove
+     this coupling. That's a secret-store write, so it's yours to run if you want it.
+  3. **Your local dev data** (`data/local*/blobs/users/owner/`) is sealed under whichever key you
+     set up on the first local unlock. Use the same recovery key locally if you want one key everywhere.
+
 - [ ] **RQ-14 · Google OAuth client (for sign-in, DB-29).** Console only: gcloud can't create this kind of
   client (DB-30). Project: the Gemini key's, most likely `gen-lang-client-0623498178`. In Google Cloud
   Console → Google Auth Platform: (1) *Branding*: app name Daybook, your support email. (2) *Audience*:

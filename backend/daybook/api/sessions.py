@@ -17,7 +17,7 @@ from daybook.engine.conductor import SessionError
 from daybook.memory import repo
 from daybook.obs.log import log_event
 from daybook.voice import tts as tts_mod
-from daybook.worker import is_stale
+from daybook.worker import is_stale, retry_finalizes
 
 router = APIRouter(dependencies=[Depends(rate_limit)])
 
@@ -52,12 +52,14 @@ async def today(
         ).fetchone()
     active = conductor.active_pointer(app, user)
     if active:
-        loaded = st.load(app.store, user.prefix, active)
+        loaded = st.load(app.store_for(user), user.prefix, active)
         if not loaded or loaded[0].status != "active":
             active = None
         elif is_stale(loaded[0], now):  # no 15-minute sweep in prod: clean up on open (DB-27)
             await conductor.end_session(app, user, active, "idle", now)
             active = None
+    if user.is_account and not active:  # the worker can't open a sealed vault on its own (DB-32)
+        await retry_finalizes(app, user, now)
     # sessions finished today but not yet in the vault count as reflected too
     reflected = d.isoformat() in done
     return {
@@ -135,7 +137,7 @@ def get_session(
     user: User = Depends(current_user),
     now: datetime = Depends(now_dep),
 ):
-    loaded = st.load(app.store, user.prefix, sid)
+    loaded = st.load(app.store_for(user), user.prefix, sid)
     if not loaded:
         raise ApiError(404, "not_found", "No such session.")
     view = conductor.session_view(loaded[0], now)
@@ -183,7 +185,7 @@ async def audio(
     now: datetime = Depends(now_dep),
 ):
     sid, _, seq = turn_id.partition(".")
-    loaded = st.load(app.store, user.prefix, sid)
+    loaded = st.load(app.store_for(user), user.prefix, sid)
     if not loaded or not seq.isdigit():
         raise ApiError(404, "not_found", "No such turn.")
     state, etag = loaded
@@ -201,7 +203,8 @@ async def audio(
         _update(app, user, sid, lambda s: setattr(s, "voice_enabled", False))
         return Response(status_code=204)
     try:
-        a = await tts_mod.speak(app.tts, app.store, turn.text)
+        own = user.prefix if user.is_account else ""  # an account's audio stays in its folder
+        a = await tts_mod.speak(app.tts, app.store_for(user), turn.text, own)
     except Exception as exc:
         log_event(event="tts_failed", session_id=sid, error=type(exc).__name__)
 
@@ -225,13 +228,13 @@ async def audio(
 
 def _update(app: App, user: User, sid: str, fn) -> None:
     for _ in range(3):
-        loaded = st.load(app.store, user.prefix, sid)
+        loaded = st.load(app.store_for(user), user.prefix, sid)
         if not loaded:
             return
         s, etag = loaded
         fn(s)
         try:
-            st.save(app.store, user.prefix, s, etag)
+            st.save(app.store_for(user), user.prefix, s, etag)
             return
         except Exception:
             continue
@@ -252,7 +255,7 @@ async def end(
     except Exception:
         raw = (await request.body()).decode(errors="ignore")
         reason = "idle" if "idle" in raw or "hidden" in raw else "user"
-    loaded = st.load(app.store, user.prefix, sid)
+    loaded = st.load(app.store_for(user), user.prefix, sid)
     if not loaded:
         raise ApiError(404, "not_found", "No such session.")
     if reason in ("idle", "hidden", "pagehide"):
@@ -269,7 +272,7 @@ async def end(
 
 @router.get("/sessions/{sid}/summary")
 def summary(sid: str, app: App = Depends(app_dep), user: User = Depends(current_user)):
-    loaded = st.load(app.store, user.prefix, sid)
+    loaded = st.load(app.store_for(user), user.prefix, sid)
     if not loaded:
         raise ApiError(404, "not_found", "No such session.")
     s = loaded[0]
@@ -310,7 +313,7 @@ class FeedbackBody(BaseModel):
 def feedback(
     sid: str, body: FeedbackBody, app: App = Depends(app_dep), user: User = Depends(current_user)
 ):
-    if not st.load(app.store, user.prefix, sid):
+    if not st.load(app.store_for(user), user.prefix, sid):
         raise ApiError(404, "not_found", "No such session.")
     _update(app, user, sid, lambda s: setattr(s, "feedback", body.value))
     app.vault(user).write(

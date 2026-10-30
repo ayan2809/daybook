@@ -10,6 +10,7 @@ Frontend and backend both follow this file. Change it only together with both si
   timestamps are ISO 8601 UTC strings.
 - Auth is a cookie (`db_session`, HttpOnly, `Path=/api`). The frontend sends requests with
   `credentials: "same-origin"` and never reads the cookie.
+- **Sealed vaults (DB-32):** an account signed in but not yet unlocked gets **423 `vault_locked`** from every data route; only `/api/me`, `/api/auth/*` and `/api/vault/*` work until it sends its recovery key.
 - **Private by default (DB-31):** every `/api/*` request needs a valid signed session cookie (account or demo) and gets 401 otherwise, before any route runs. The only public routes are `GET /api/health`, `GET /api/me`, `POST /api/auth/login`, `POST /api/auth/google`, `POST /api/auth/logout` and `POST /api/demo/start` (3 a minute per IP, 100 new sandboxes a day; 429 `rate_limited` / `demo_cap`). `/api/docs` and `/api/openapi.json` exist only outside production.
 - **Every mutating request (POST/PUT/PATCH/DELETE) must send `X-Requested-With: daybook`**, or it gets
   403. Exception: `POST /api/sessions/{id}/end` (so `navigator.sendBeacon` works).
@@ -114,10 +115,13 @@ interface Settings {
 | Method + path | Body | 200 response |
 |---|---|---|
 | `GET /api/health` (`?warm=1` also loads the vault) | | `{ok: true, env, llm, tts}` |
-| `POST /api/auth/login` | `{owner_key}` | `{role: "owner"}` (sets cookie) · 401 on a bad key |
-| `POST /api/auth/google` | `{credential}` (the ID token from Google Identity Services) | `{role: "owner" \| "user"}` (sets cookie). The first sign-in creates the account (DB-29); an email in `OWNER_EMAILS` opens the owner's data. 401 bad token or unverified email · 403 `not_invited` (allowlist) · 403 `signups_closed` (`MAX_ACCOUNTS`) · 503 not configured |
+| `POST /api/auth/login` | `{owner_key}` | `{role: "owner", vault: "new" \| "locked"}` (sets a locked cookie) · 401 on a bad key |
+| `POST /api/auth/google` | `{credential}` (the ID token from Google Identity Services) | `{role: "owner" \| "user", vault: "new" \| "locked"}` (sets a locked cookie; the vault opens with `/api/vault/*`). The first sign-in creates the account (DB-29); an email in `OWNER_EMAILS` opens the owner's data. 401 bad token or unverified email · 403 `not_invited` (allowlist) · 403 `signups_closed` (`MAX_ACCOUNTS`) · 503 not configured |
 | `POST /api/auth/logout` | | `{ok: true}` |
-| `GET /api/me` | | `{role: Role \| null, settings: Settings \| null, demo: {sandbox_id, sessions_left, asks_left, replay_only: boolean} \| null, features: {voice: boolean, push: boolean, vapid_public_key: string \| null, google_client_id: string \| null}, account: {email: string \| null} \| null}`. `Role` is `"owner" \| "user" \| "demo"`. Signed out → `role: null` (200, not 401). |
+| `GET /api/me` | | `{role: Role \| null, settings: Settings \| null, demo: {sandbox_id, sessions_left, asks_left, replay_only: boolean} \| null, features: {voice: boolean, push: boolean, vapid_public_key: string \| null, google_client_id: string \| null}, account: {email: string \| null, vault: "new" \| "locked" \| "open"} \| null}`. While an account's vault isn't open, `settings` is `null`. `Role` is `"owner" \| "user" \| "demo"`. Signed out → `role: null` (200, not 401). |
+| `POST /api/vault/setup` | `{recovery_key}` (made in the browser: 32 base32 characters, dashes and case ignored) | `{vault: "open"}` (re-sets the cookie with the vault key inside, encrypted). 409 if the account already has a key · 422 malformed key. DB-32 |
+| `POST /api/vault/unlock` | `{recovery_key}` | `{vault: "open"}` · 403 `wrong_key` (deliberately not 401) · 409 `vault_new` |
+| `POST /api/vault/reset` | `{confirm: "start over"}` | `{vault: "new"}`. A lost key: forget it and start an empty vault; the old data stays sealed and unreachable |
 | `POST /api/demo/start` | | `{role: "demo", sandbox_id}` (sets cookie; new sandbox seeded with the demo persona) |
 | `GET /api/demo/replay` | | `{banner: string, turns: Turn[] (with `audio_url: string \| null`), summary: Summary}` |
 | `GET /api/demo/last-trace` | | the sandbox's last turn trace (same shape as an admin trace turn) or `null` |
@@ -187,6 +191,7 @@ interface Summary {
 | `POST /api/push/test` | | `{sent: number}` |
 | `GET /api/export/resume-as-code?since=` | | JSON array of Resume-as-code notes (accounts only) |
 | `GET /api/export/markdown` | | `text/markdown` file |
+| `GET /api/export/brain` | | `text/markdown` file `daybook-memory.md`: the whole memory written for an LLM to read (DB-33). Accounts and the demo |
 | `GET /api/export/sqlite` | | `application/x-sqlite3` file |
 | `POST /api/data/delete` | `{confirm: "delete"}` | `{ok: true}` (accounts only; deletes everything, a Google account's record and its reminder schedules too, and signs out) |
 

@@ -73,10 +73,10 @@ def overview(
     lat = [s["_stats"].get("latency_p50_ms") for s in done if s["_stats"].get("latency_p50_ms")]
     lat95 = [s["_stats"].get("latency_p95_ms") for s in done if s["_stats"].get("latency_p95_ms")]
     spans: dict[str, list[int]] = {}
-    for key in app.store.list(f"traces/{user.uid}/")[-400:]:
+    for key in app.store.list(f"{user.prefix}traces/")[-400:]:
         if "/jobs/" in key:
             continue
-        b = app.store.get(key)
+        b = app.store_for(user).get(key)
         if not b:
             continue
         for sp in json.loads(b.data).get("spans", []):
@@ -101,8 +101,8 @@ def overview(
             (since,),
         ).fetchone()
     asks = [
-        json.loads(app.store.get(k).data)
-        for k in app.store.list(f"traces/{user.uid}/")
+        json.loads(app.store_for(user).get(k).data)
+        for k in app.store.list(f"{user.prefix}traces/")
         if "/jobs/ask-" in k
     ][-200:]
     return {
@@ -155,12 +155,12 @@ def sessions(app: App = Depends(app_dep), user: User = Depends(owner_only)):
 @router.get("/sessions/{sid}/trace")
 def trace(sid: str, app: App = Depends(app_dep), user: User = Depends(owner_only)):
     row = next((s for s in _sessions(app, user) if s["id"] == sid), None)
-    keys = [k for k in app.store.list(f"traces/{user.uid}/") if f"/{sid}/" in k or sid in k]
+    keys = [k for k in app.store.list(f"{user.prefix}traces/") if f"/{sid}/" in k or sid in k]
     if row is None and not keys:
         raise ApiError(404, "not_found", "No such session.")
     turns, jobs = [], []
     for k in sorted(keys):
-        b = app.store.get(k)
+        b = app.store_for(user).get(k)
         if b:
             (jobs if "/jobs/" in k else turns).append(json.loads(b.data))
     return {

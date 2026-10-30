@@ -1,4 +1,4 @@
-"""The reminder tick (plan 12.3): every 15 minutes, send the evening reminder when it's due.
+"""The reminder tick (plan 12.3, DB-27, DB-32): send the evening reminder when it's due.
 
 Due = reminders enabled, today is a reminder day, the time is inside the current 15-minute window,
 nothing was reflected today, and that nudge wasn't sent yet today. Two nudges by default (19:00,
@@ -7,11 +7,11 @@ nothing was reflected today, and that nudge wasn't sent yet today. Two nudges by
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from daybook.memory import repo
+from daybook.push import notify
 from daybook.push.webpush import Sender
 
 WINDOW_MIN = 15
@@ -37,18 +37,14 @@ def body_for(n_pending: int) -> str:
     return f"How did today go? {n_pending} {what} to confirm from yesterday."
 
 
-def tick(vault, store, prefix: str, sender: Sender, now: datetime) -> dict:
-    """Returns {"sent": n, "nudge": "first"|"second"|None, "reason": ...}."""
-    with vault.read() as conn:
-        prefs = repo.get_setting(conn, "app_settings", {}) or {}
-        profile = repo.get_profile(conn) or {}
-        tz = profile.get("timezone") or "Asia/Kolkata"
-        now_local = now.astimezone(ZoneInfo(tz))
-        today = now_local.date().isoformat()
-        rem = {**DEFAULT_REMINDER, **(prefs.get("reminder") or {})}
-        reflected = today in repo.reflected_dates(conn, today)
-        n_pending = len(repo.open_pending(conn, today))
-        subs = repo.rows(conn.execute("SELECT * FROM push_subscriptions"))
+def tick(app, prefix: str, sender: Sender, now: datetime) -> dict:
+    """Returns {"sent": n, "nudge": "first"|"second"|None, "reason": ...}. Reads only the account's
+    reminder record (DB-32): a reminder fires while the user, and their key, are away."""
+    rec = notify.load(app, prefix)
+    tz = rec.get("tz") or "Asia/Kolkata"
+    now_local = now.astimezone(ZoneInfo(tz))
+    today = now_local.date().isoformat()
+    rem = {**DEFAULT_REMINDER, **(rec.get("reminder") or {})}
     if not rem["enabled"]:
         return {"sent": 0, "nudge": None, "reason": "disabled"}
     if now_local.isoweekday() not in rem["days"]:
@@ -60,34 +56,28 @@ def tick(vault, store, prefix: str, sender: Sender, now: datetime) -> dict:
         nudge = "second"
     if nudge is None:
         return {"sent": 0, "nudge": None, "reason": "not due"}
-    if reflected:
+    if rec.get("reflected") == today:
         return {"sent": 0, "nudge": nudge, "reason": "already reflected"}
-    log_key = f"{prefix}reminder-log/{today}.json"
-    b = store.get(log_key)
-    log = json.loads(b.data) if b else {}
-    if log.get(nudge):
+    if (rec.get("sent") or {}).get("date") == today and rec["sent"].get(nudge):
         return {"sent": 0, "nudge": nudge, "reason": "already sent"}
     payload = {
         "title": "Daybook",
-        "body": body_for(n_pending),
+        "body": body_for(int(rec.get("pending") or 0)),
         "url": "/reflect?mode=guided&src=push",
     }
     sent, gone = 0, []
-    for s in subs:
+    for s in rec.get("subs") or []:
         r = sender.send(s, payload)
         if r.ok:
             sent += 1
         elif r.gone:
-            gone.append(s["id"])
-    if gone or sent:
+            gone.append(s["endpoint"])
 
-        def write(conn):
-            for sid in gone:
-                conn.execute("DELETE FROM push_subscriptions WHERE id = ?", (sid,))
-            if sent:
-                conn.execute("UPDATE push_subscriptions SET last_success_at = ?", (repo.now_iso(),))
+    def write(r: dict) -> None:
+        r["subs"] = [s for s in r.get("subs") or [] if s["endpoint"] not in gone]
+        log = r.get("sent") if (r.get("sent") or {}).get("date") == today else {"date": today}
+        log[nudge] = repo.now_iso()
+        r["sent"] = log
 
-        vault.write(write)
-    log[nudge] = repo.now_iso()
-    store.put(log_key, json.dumps(log).encode())
+    notify.update(app, prefix, write)
     return {"sent": sent, "nudge": nudge, "reason": "sent", "deleted": len(gone)}

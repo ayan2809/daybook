@@ -41,21 +41,42 @@ def _serializer(app: App) -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(app.settings.session_signing_key, salt="daybook-session")
 
 
+def _cookie_key(app: App) -> bytes:
+    from daybook.storage.sealed import server_key
+
+    return server_key(app.settings.session_signing_key, "cookie")
+
+
 def make_cookie(
-    app: App, role: str, sandbox_id: str | None = None, user: User | None = None
+    app: App,
+    role: str,
+    sandbox_id: str | None = None,
+    user: User | None = None,
+    name: str | None = None,
 ) -> str:
+    """Signed, and the vault key inside it is encrypted too (DB-32). The cookie lives only in the
+    user's browser; the server keeps no copy."""
+    from daybook.storage.sealed import wrap
+
     data = {"role": role, "sb": sandbox_id}
     if user is not None:
-        data.update(uid=user.uid, em=user.email)
+        data.update(aid=user.aid, em=user.email, nm=name)
+        if user.key is not None:
+            data["k"] = wrap(_cookie_key(app), user.key, f"cookie:{user.aid}")
     return _serializer(app).dumps(data)
 
 
 def set_cookie(
-    response, app: App, role: str, sandbox_id: str | None = None, user: User | None = None
+    response,
+    app: App,
+    role: str,
+    sandbox_id: str | None = None,
+    user: User | None = None,
+    name: str | None = None,
 ) -> None:
     response.set_cookie(
         COOKIE,
-        make_cookie(app, role, sandbox_id, user),
+        make_cookie(app, role, sandbox_id, user, name),
         max_age=DEMO_TTL if role == "demo" else OWNER_TTL,
         httponly=True,
         secure=not app.settings.is_local,
@@ -80,22 +101,42 @@ def read_cookie(request: Request, app: App) -> dict | None:
     return data
 
 
-def optional_user(request: Request, app: App = Depends(app_dep)) -> User | None:
-    data = read_cookie(request, app)
+def user_from_cookie(app: App, data: dict | None) -> User | None:
+    """Owner or user: unlocked when the cookie carries the vault key, otherwise locked."""
+    from daybook.storage.sealed import SealError, unwrap
+
     if not data:
         return None
-    if data["role"] == "owner":
-        return account_user("owner", data.get("em"))
-    if data["role"] == "user" and data.get("uid"):
-        return account_user(data["uid"], data.get("em"))
-    if data["role"] == "demo" and data.get("sb"):
+    role = data.get("role")
+    if role in ("owner", "user") and data.get("aid"):
+        if role == "owner" and data["aid"] != "owner":
+            return None
+        key = None
+        if data.get("k"):
+            try:
+                key = unwrap(_cookie_key(app), data["k"], f"cookie:{data['aid']}")
+            except SealError:
+                return None
+        return account_user(role, data["aid"], key, data.get("em"))
+    if role == "demo" and data.get("sb"):
         return demo_user(data["sb"])
     return None
 
 
-def current_user(user: User | None = Depends(optional_user)) -> User:
+def optional_user(request: Request, app: App = Depends(app_dep)) -> User | None:
+    return user_from_cookie(app, read_cookie(request, app))
+
+
+def signed_in(user: User | None = Depends(optional_user)) -> User:
+    """Any session, including an account whose vault is still locked (the vault endpoints)."""
     if user is None:
         raise ApiError(401, "unauthorized", "Please sign in or start the demo.")
+    return user
+
+
+def current_user(user: User = Depends(signed_in)) -> User:
+    if user.locked:
+        raise ApiError(423, "vault_locked", "Unlock your vault with your recovery key.")
     return user
 
 
@@ -165,6 +206,7 @@ class TokenBucket:
 _general = TokenBucket(rate_per_min=120, burst=40)
 _login = TokenBucket(rate_per_min=5, burst=5)
 _demo = TokenBucket(rate_per_min=3, burst=3)
+_vault = TokenBucket(rate_per_min=10, burst=10)
 
 
 def client_ip(request: Request) -> str:
@@ -191,3 +233,8 @@ def login_rate_limit(request: Request) -> None:
 def demo_rate_limit(request: Request) -> None:
     if not _demo.take(client_ip(request)):
         raise ApiError(429, "rate_limited", "Too many demos started. Try again in a minute.")
+
+
+def vault_rate_limit(request: Request) -> None:
+    if not _vault.take(client_ip(request)):
+        raise ApiError(429, "rate_limited", "Too many tries. Wait a minute and try again.")

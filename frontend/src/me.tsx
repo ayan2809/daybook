@@ -1,6 +1,6 @@
 // Who is signed in (GET /api/me), shared through context.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api, errorMessage, setUnauthorizedHandler } from "./api";
+import { api, errorMessage, setLockedHandler, setUnauthorizedHandler } from "./api";
 import type { Me, Settings } from "./types";
 
 interface MeState {
@@ -48,8 +48,12 @@ export function MeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setUnauthorizedHandler(() => setMe((prev) => (prev?.role ? { ...SIGNED_OUT, features: prev.features } : prev)));
-    return () => setUnauthorizedHandler(null);
-  }, []);
+    setLockedHandler(() => void refresh()); // a 423: show the unlock screen
+    return () => {
+      setUnauthorizedHandler(null);
+      setLockedHandler(null);
+    };
+  }, [refresh]);
 
   const setSettings = useCallback((s: Settings) => setMe((prev) => (prev ? { ...prev, settings: s } : prev)), []);
 

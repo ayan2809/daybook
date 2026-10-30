@@ -1,12 +1,14 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
-import { Bell, Download, LogOut } from "lucide-react";
+import { Bell, Brain, Check, Copy, Download, KeyRound, LogOut } from "lucide-react";
 import { api, errorMessage, exportUrls } from "../api";
 import { useMe } from "../me";
 import { Page } from "../components/Page";
 import { Loading, Notice } from "../components/Status";
 import { isIOS, isStandalone } from "../lib/platform";
+import { deviceKey } from "../lib/vault";
 import { OwnerLogin } from "./Landing";
+import { KeyText } from "./Vault";
 import type { Settings, SettingsPatch } from "../types";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -40,6 +42,7 @@ export function SettingsScreen() {
   }
 
   async function signOut() {
+    deviceKey.forget(); // the recovery key leaves this device too
     try {
       await api.logout();
     } catch {
@@ -170,6 +173,10 @@ export function SettingsScreen() {
       )}
 
       {isAccount && <PushSection />}
+
+      <BrainSection />
+
+      {isAccount && <PrivacySection />}
 
       {isAccount && (
         <Section title="Export">
@@ -424,6 +431,74 @@ function PushSection() {
       )}
       {status && <p className="small">{status}</p>}
       {error && <p className="error small">{error}</p>}
+    </Section>
+  );
+}
+
+/** The whole memory as one Markdown file written for an LLM (DB-33). */
+function BrainSection() {
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function copy() {
+    setError(null);
+    try {
+      const md = await api.exportBrain();
+      await navigator.clipboard.writeText(md);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  return (
+    <Section title="Your memory, for any AI">
+      <div className="stack-sm">
+        <p className="small">
+          One Markdown file with everything Daybook knows: achievements and their numbers, skills, projects and open
+          questions, with a note telling the model how to read it. Paste it into ChatGPT, Claude or Gemini to draft a
+          resume, prep an appraisal or write a weekly update.
+        </p>
+        <div className="row gap-sm wrap">
+          <button className="btn" onClick={() => void copy()}>
+            {copied ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
+            {copied ? "Copied" : "Copy memory"}
+          </button>
+          <a className="btn btn-ghost" href={exportUrls.brain} download>
+            <Brain size={16} aria-hidden="true" /> Download .md
+          </a>
+        </div>
+        {error && <p className="error small">{error}</p>}
+      </div>
+    </Section>
+  );
+}
+
+function PrivacySection() {
+  const [shown, setShown] = useState<string | null>(null);
+  const saved = deviceKey.get();
+  return (
+    <Section title="Privacy">
+      <div className="stack-sm">
+        <p className="small">
+          Your reflections, memory, transcripts and voice clips are encrypted with your recovery key before they're
+          stored. Daybook keeps no copy of the key and no email or name, so nobody running the servers can read your
+          data or tell which folder is yours.
+        </p>
+        {saved ? (
+          shown ? (
+            <KeyText value={shown} />
+          ) : (
+            <button className="btn btn-ghost justify-start" onClick={() => setShown(saved)}>
+              <KeyRound size={16} aria-hidden="true" /> Show my recovery key
+            </button>
+          )
+        ) : (
+          <p className="small muted">This device doesn't have a saved copy of your recovery key.</p>
+        )}
+        <p className="small muted">Signing out removes the key from this device.</p>
+      </div>
     </Section>
   );
 }

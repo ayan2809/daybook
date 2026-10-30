@@ -1494,3 +1494,67 @@ details > summary {
     animation-duration: 2.4s !important;
   }
 }
+
+/* ---------------------------------------------------------------- the sealed vault (DB-32) */
+.vault {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 24px var(--gutter) 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.vault-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: clamp(26px, 7vw, 36px);
+  line-height: 1.15;
+}
+.vault-sub {
+  color: var(--ink-2);
+}
+.vault-key {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: clamp(17px, 4.6vw, 22px);
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  padding: 16px 18px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--ink);
+  overflow-wrap: normal;
+  user-select: all;
+}
+.vault-input {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+.vault-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+.vault-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+.vault-lost {
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+}
+.vault-out {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.btn.danger {
+  color: var(--danger);
+}

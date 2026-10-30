@@ -25,6 +25,7 @@ from daybook.memory.validate import bullet_ok, number_supported, numbers_unsuppo
 from daybook.obs.log import log_event
 from daybook.obs.tracer import Trace
 from daybook.prompts import render
+from daybook.push import notify
 from daybook.storage.blob import PreconditionFailed
 
 GAP_QUESTIONS = {
@@ -49,7 +50,7 @@ def _lf(s: str) -> str:
 
 async def finalize_session(app: App, user: User, sid: str, now: datetime | None = None) -> dict:
     now = now or datetime.now().astimezone()
-    loaded = st.load(app.store, user.prefix, sid)
+    loaded = st.load(app.store_for(user), user.prefix, sid)
     if loaded is None:
         return {"status": "missing"}
     state, etag = loaded
@@ -75,7 +76,7 @@ async def finalize_session(app: App, user: User, sid: str, now: datetime | None 
     try:
         written = vault.write(lambda conn: _write(conn, state, plan))
     except Exception as exc:
-        log_event(event="finalize_failed", session_id=sid, error=str(exc)[:200])
+        log_event(event="finalize_failed", session_id=sid, error=type(exc).__name__)
         state.status = "failed"
         _save(app, user, state, etag)
         raise
@@ -83,7 +84,7 @@ async def finalize_session(app: App, user: User, sid: str, now: datetime | None 
         try:
             await retrieval.index(vault, app.embedder)
         except Exception as exc:  # the items are saved; embeddings retry next time
-            log_event(event="index_failed", session_id=sid, error=str(exc)[:200])
+            log_event(event="index_failed", session_id=sid, error=type(exc).__name__)
     with vault.read() as conn:
         items = repo.list_items(conn, ids=written["item_ids"], include_hidden=True)
         pend = [repo.get_pending(conn, p) for p in written["pending_ids"]]
@@ -105,15 +106,22 @@ async def finalize_session(app: App, user: User, sid: str, now: datetime | None 
         )
     )
     _save(app, user, state, None, force=True)
-    d = trace.finish()
-    app.store.put(f"traces/{user.uid}/{state.local_date}/jobs/finalize-{sid}.json", Trace.dumps(d))
-    app.dispatch(
-        "session_judge",
-        uid=user.uid,
-        prefix=user.prefix,
-        sandbox_id=user.sandbox_id,
-        session_id=sid,
+    with vault.read() as conn:  # the reminder record: a saved day and the open-question count
+        n_open = len(repo.open_pending(conn, state.local_date))
+    notify.for_user(
+        app,
+        user,
+        lambda r: r.update(
+            reflected=max(r.get("reflected") or "", state.local_date), pending=n_open
+        ),
     )
+    d = trace.finish()
+    app.store_for(user).put(
+        f"{user.prefix}traces/{state.local_date}/jobs/finalize-{sid}.json", Trace.dumps(d)
+    )
+    from daybook.worker import job_identity
+
+    app.dispatch("session_judge", session_id=sid, **job_identity(app, user))
     return {"status": "finalized", "items": len(written["item_ids"])}
 
 
@@ -123,9 +131,9 @@ def _save(app: App, user: User, state: SessionState, etag: str | None, force: bo
     for _ in range(3):
         try:
             if force or etag is None:
-                cur = app.store.head(st.session_key(user.prefix, state.id))
-                return st.save(app.store, user.prefix, state, cur)
-            return st.save(app.store, user.prefix, state, etag)
+                cur = app.store_for(user).head(st.session_key(user.prefix, state.id))
+                return st.save(app.store_for(user), user.prefix, state, cur)
+            return st.save(app.store_for(user), user.prefix, state, etag)
         except PreconditionFailed:
             etag = None
     raise PreconditionFailed(state.id)

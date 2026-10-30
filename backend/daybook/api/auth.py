@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel
 
 from daybook.api.deps import (
@@ -17,7 +17,10 @@ from daybook.api.deps import (
     login_rate_limit,
     now_dep,
     optional_user,
+    read_cookie,
     set_cookie,
+    signed_in,
+    vault_rate_limit,
 )
 from daybook.api.settings_api import read_settings
 from daybook.engine import accounts, demo
@@ -38,8 +41,9 @@ class GoogleLogin(BaseModel):
 def login(body: Login, response: Response, app: App = Depends(app_dep)):
     if not check_owner_key(app, body.owner_key):
         raise ApiError(401, "unauthorized", "That key didn't work.")
-    set_cookie(response, app, "owner")
-    return {"role": "owner"}
+    user = accounts.owner_sign_in(app)
+    set_cookie(response, app, "owner", user=user)
+    return {"role": "owner", "vault": accounts.vault_state(app, user.aid)}
 
 
 @router.post("/auth/google", dependencies=[Depends(login_rate_limit)])
@@ -55,8 +59,77 @@ def login_google(body: GoogleLogin, response: Response, app: App = Depends(app_d
         user = accounts.sign_in(app, claims)
     except accounts.AccountError as exc:
         raise ApiError(exc.status, exc.code, exc.message) from None
-    set_cookie(response, app, user.role, user=user)
-    return {"role": user.role}
+    first = claims.get("given_name") or claims.get("name")
+    set_cookie(response, app, user.role, user=user, name=first)
+    return {"role": user.role, "vault": accounts.vault_state(app, user.aid)}
+
+
+# ------------------------------------------------------------------ the sealed vault (DB-32)
+
+
+class VaultKey(BaseModel):
+    recovery_key: str
+
+
+def _account(user: User) -> User:
+    if not user.is_account:
+        raise ApiError(403, "forbidden", "Sign in to use this.")
+    return user
+
+
+@router.post("/vault/setup", dependencies=[Depends(vault_rate_limit)])
+def vault_setup(
+    body: VaultKey,
+    request: Request,
+    response: Response,
+    app: App = Depends(app_dep),
+    user: User = Depends(signed_in),
+):
+    """First unlock of a new account: the browser made the recovery key and shows it once."""
+    _account(user)
+    name = (read_cookie(request, app) or {}).get("nm")
+    try:
+        opened = accounts.setup_vault(app, user, body.recovery_key, display_name=name)
+    except ValueError as exc:
+        raise ApiError(422, "validation", str(exc)) from None
+    except accounts.AccountError as exc:
+        raise ApiError(exc.status, exc.code, exc.message) from None
+    set_cookie(response, app, user.role, user=opened)
+    return {"vault": "open"}
+
+
+@router.post("/vault/unlock", dependencies=[Depends(vault_rate_limit)])
+def vault_unlock(
+    body: VaultKey, response: Response, app: App = Depends(app_dep), user: User = Depends(signed_in)
+):
+    _account(user)
+    try:
+        opened = accounts.unlock(app, user, body.recovery_key)
+    except accounts.AccountError as exc:
+        raise ApiError(exc.status, exc.code, exc.message) from None
+    set_cookie(response, app, user.role, user=opened)
+    return {"vault": "open"}
+
+
+class ResetBody(BaseModel):
+    confirm: str
+
+
+@router.post("/vault/reset", dependencies=[Depends(vault_rate_limit)])
+def vault_reset(
+    body: ResetBody,
+    response: Response,
+    app: App = Depends(app_dep),
+    user: User = Depends(signed_in),
+):
+    """Lost key: start over with an empty vault. The old data stays sealed and unreachable."""
+    _account(user)
+    if body.confirm != "start over":
+        raise ApiError(422, "validation", 'Type "start over" to confirm.')
+    accounts.reset(app, user)
+    locked = accounts.account_user(user.role, user.aid, None, user.email)
+    set_cookie(response, app, user.role, user=locked)
+    return {"vault": "new"}
 
 
 @router.post("/auth/logout")
@@ -79,12 +152,16 @@ def me(
     }
     if user is None:
         return {"role": None, "settings": None, "demo": None, "features": features, "account": None}
+    account = None
+    if user.is_account:
+        vault = "open" if not user.locked else accounts.vault_state(app, user.aid)
+        account = {"email": user.email, "vault": vault}
     out = {
         "role": user.role,
-        "settings": read_settings(app, user),
+        "settings": None if user.locked else read_settings(app, user),
         "demo": None,
         "features": features,
-        "account": {"email": user.email} if user.is_account else None,
+        "account": account,
     }
     if user.role == "demo":
         usage = app.demo_caps.usage(user.sandbox_id, now)
@@ -122,7 +199,7 @@ def demo_last_trace(app: App = Depends(app_dep), user: User = Depends(current_us
     cands = [sid] if sid else []
     cands += [k.rsplit("/", 1)[1][:-5] for k in reversed(keys)]
     for s in cands:
-        loaded = st.load(app.store, user.prefix, s)
+        loaded = st.load(app.store_for(user), user.prefix, s)
         if loaded and loaded[0].flags.get("last_trace"):
             return loaded[0].flags["last_trace"]
     return None

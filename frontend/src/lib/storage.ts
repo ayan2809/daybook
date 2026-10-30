@@ -5,6 +5,7 @@ export const KEYS = {
   sessionId: "daybook.sessionId",
   draft: (sessionId: string) => `daybook.draft.${sessionId}`,
   outbox: (sessionId: string) => `daybook.outbox.${sessionId}`,
+  recoveryKey: "daybook.recoveryKey", // this device's copy, so it unlocks itself (DB-32)
 } as const;
 
 export function getItem(key: string): string | null {

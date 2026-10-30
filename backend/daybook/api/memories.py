@@ -368,8 +368,8 @@ async def ask(
     )
     app.spend.add(user, trace.cost_usd, now)
     d = trace.finish(abstained=out["abstained"])
-    app.store.put(
-        f"traces/{user.uid}/{today.isoformat()}/jobs/ask-{now.strftime('%H%M%S%f')}.json",
+    app.store_for(user).put(
+        f"{user.prefix}traces/{today.isoformat()}/jobs/ask-{now.strftime('%H%M%S%f')}.json",
         Trace.dumps(d),
     )
     return out

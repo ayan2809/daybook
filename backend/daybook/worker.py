@@ -1,5 +1,5 @@
 """Worker jobs (plan 11): finalize_session (then session_judge), reminder_tick,
-cleanup_stale_sessions. Every job is idempotent. In Lambda: `handler`; locally the API runs them
+cleanup_stale_sessions (demo sandboxes; accounts are sealed, DB-32). Every job is idempotent. In Lambda: `handler`; locally the API runs them
 in-process (DB-09).
 """
 
@@ -14,16 +14,30 @@ from daybook.engine.app import OWNER, App, User, account_user, demo_user, get_ap
 from daybook.obs.log import log_event
 
 
-def _user(event: dict) -> User:
+def job_identity(app: App, user: User) -> dict:
+    """Who a background job runs as. An account's vault key rides along encrypted with a server
+    key (DB-32): Lambda's async queue isn't readable from the account, and the worker never logs
+    its event."""
+    if user.role == "demo":
+        return {"sandbox_id": user.sandbox_id}
+    if user.key is None:  # offline tools: the unsealed owner
+        return {"uid": user.uid}
+    from daybook.storage.sealed import server_key, wrap
+
+    k = wrap(server_key(app.settings.session_signing_key, "worker"), user.key, f"job:{user.aid}")
+    return {"role": user.role, "aid": user.aid, "k": k}
+
+
+def _user(app: App, event: dict) -> User:
     if event.get("sandbox_id"):
         return demo_user(event["sandbox_id"])
-    return account_user(event.get("uid") or OWNER.uid)
+    if event.get("k"):
+        from daybook.storage.sealed import server_key, unwrap
 
-
-def _accounts(app: App) -> list[User]:
-    from daybook.engine import accounts
-
-    return [OWNER] + [account_user(uid) for uid in accounts.all_uids(app)]
+        wk = server_key(app.settings.session_signing_key, "worker")
+        key = unwrap(wk, event["k"], f"job:{event['aid']}")
+        return account_user(event.get("role") or "user", event["aid"], key)
+    return OWNER
 
 
 async def run_job(app: App, event: dict[str, Any]) -> dict:
@@ -32,13 +46,19 @@ async def run_job(app: App, event: dict[str, Any]) -> dict:
     if job == "finalize_session":
         from daybook.engine.finalize import finalize_session
 
-        return await finalize_session(app, _user(event), event["session_id"])
+        return await finalize_session(app, _user(app, event), event["session_id"])
     if job == "session_judge":
-        return await session_judge(app, _user(event), event["session_id"])
-    if job == "reminder_tick":  # a schedule names its account; the local ticker checks them all
-        users = [_user(event)] if event.get("uid") else _accounts(app)
+        return await session_judge(app, _user(app, event), event["session_id"])
+    if job == "reminder_tick":  # a schedule names its folder; the local ticker checks them all
+        from daybook.push import notify
+
+        if event.get("uid"):
+            one = notify.prefix_for(event["uid"])
+            prefixes = [one] if one else []
+        else:
+            prefixes = notify.prefixes(app)
         out = {"cleanup": await cleanup_stale_sessions(app, now)}
-        out["reminder"] = {u.uid: reminder_tick(app, u, now) for u in users}
+        out["reminder"] = {p.split("/")[1]: reminder_tick(app, p, now) for p in prefixes}
         return out
     if job == "cleanup_stale_sessions":
         return await cleanup_stale_sessions(app, now)
@@ -50,7 +70,7 @@ async def session_judge(app: App, user: User, sid: str) -> dict:
     from daybook.engine import state as st
     from daybook.obs.tracer import Trace
 
-    loaded = st.load(app.store, user.prefix, sid)
+    loaded = st.load(app.store_for(user), user.prefix, sid)
     if loaded is None:
         return {"status": "missing"}
     state, _ = loaded
@@ -73,16 +93,16 @@ async def session_judge(app: App, user: User, sid: str) -> dict:
             conn.execute("UPDATE sessions SET stats = ? WHERE id = ?", (json.dumps(stats), sid))
 
     app.vault(user).write(write)
-    app.store.put(
-        f"traces/{user.uid}/{state.local_date}/jobs/judge-{sid}.json",
+    app.store_for(user).put(
+        f"{user.prefix}traces/{state.local_date}/jobs/judge-{sid}.json",
         Trace.dumps(trace.finish(scores=s)),
     )
     for _ in range(3):  # mark judged in the session file
-        loaded = st.load(app.store, user.prefix, sid)
+        loaded = st.load(app.store_for(user), user.prefix, sid)
         state, etag = loaded
         state.flags["judged"] = True
         try:
-            st.save(app.store, user.prefix, state, etag)
+            st.save(app.store_for(user), user.prefix, state, etag)
             break
         except Exception:
             continue
@@ -106,43 +126,48 @@ def is_stale(s, now: datetime) -> bool:
 
 
 async def cleanup_stale_sessions(app: App, now: datetime) -> dict:
-    """End sessions that were left open: hidden for 2 min, or older than limit + 15 min. Also
-    retries finalizes that were queued by the spend breaker or that failed."""
+    """End demo sessions that were left open: hidden for 2 min, or older than limit + 15 min. An
+    account's sessions are sealed with a key the worker doesn't have, so those are ended (and
+    queued finalizes retried) when the user next opens Today (DB-32)."""
     from daybook.engine import conductor
     from daybook.engine import state as st
-    from daybook.engine.finalize import finalize_session
 
-    ended, retried = 0, 0
+    ended = 0
     demos = sorted({k.split("/")[1] for k in app.store.list("demo/") if k.endswith("active.json")})
-    for user in _accounts(app) + [demo_user(sb) for sb in demos]:
-        prefix = user.prefix
+    for user in [demo_user(sb) for sb in demos]:
         sid = conductor.active_pointer(app, user)
         if sid:
-            loaded = st.load(app.store, prefix, sid)
+            loaded = st.load(app.store, user.prefix, sid)
             if loaded and loaded[0].status == "active" and is_stale(loaded[0], now):
                 await conductor.end_session(app, user, sid, "idle", now)
                 ended += 1
-        if user.is_account:
-            for key in app.store.list(f"{prefix}sessions/")[-20:]:
-                loaded = st.load(app.store, prefix, key.rsplit("/", 1)[1][:-5])
-                if (
-                    loaded
-                    and (loaded[0].flags.get("finalize_queued") or loaded[0].status == "failed")
-                    and app.spend.status(user, now) == "ok"
-                ):
-                    await finalize_session(app, user, loaded[0].id)
-                    retried += 1
-    return {"ended": ended, "retried": retried}
+    return {"ended": ended}
 
 
-def reminder_tick(app: App, user: User, now: datetime) -> dict:
+async def retry_finalizes(app: App, user: User, now: datetime, recent: int = 3) -> int:
+    """Queued (spend breaker) or failed finalizes among the last few sessions: run them again."""
+    from daybook.engine import state as st
+
+    if not user.is_account or app.spend.status(user, now) != "ok":
+        return 0
+    n = 0
+    store = app.store_for(user)
+    for key in app.store.list(f"{user.prefix}sessions/")[-recent:]:
+        loaded = st.load(store, user.prefix, key.rsplit("/", 1)[1][:-5])
+        if loaded and (loaded[0].flags.get("finalize_queued") or loaded[0].status == "failed"):
+            app.dispatch("finalize_session", session_id=loaded[0].id, **job_identity(app, user))
+            n += 1
+    return n
+
+
+def reminder_tick(app: App, prefix: str, now: datetime) -> dict:
     from daybook.push.reminders import tick
     from daybook.push.webpush import VapidSender
 
     if not app.settings.vapid_private_key:
         return {"sent": 0, "reason": "no VAPID key"}
     sender = VapidSender(app.settings.vapid_private_key, app.settings.site_url)
-    return tick(app.vault(user), app.store, user.prefix, sender, now)
+    return tick(app, prefix, sender, now)
 
 
 def handler(event, context=None):  # Lambda entry point

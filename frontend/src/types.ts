@@ -208,12 +208,15 @@ export interface Features {
   google_client_id: string | null;
 }
 
+export type VaultState = "new" | "locked" | "open";
+
 export interface Me {
   role: Role | null;
   settings: Settings | null;
   demo: DemoInfo | null;
   features: Features;
-  account: { email: string | null } | null;
+  /** vault: new (no recovery key yet) · locked (key needed on this device) · open (DB-32) */
+  account: { email: string | null; vault: VaultState } | null;
 }
 
 export interface ReplayTurn extends Turn {

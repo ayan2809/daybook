@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { MeProvider, useMe } from "./me";
 import { Landing } from "./screens/Landing";
+import { VaultGate } from "./screens/Vault";
 import { TodayScreen } from "./screens/Today";
 import { Reflect } from "./screens/reflect/Reflect";
 import { SummaryScreen } from "./screens/Summary";
@@ -30,6 +31,7 @@ function RequireRole({ owner = false, children }: { owner?: boolean; children: R
     );
   }
   if (!me.role) return <Navigate to="/" replace />;
+  if (me.account && me.account.vault !== "open") return <VaultGate />; // DB-32
   if (owner && me.role !== "owner") return <Navigate to="/today" replace />;
   return <>{children}</>;
 }

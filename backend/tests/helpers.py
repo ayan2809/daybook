@@ -25,3 +25,17 @@ def make_app(tmp_path, **overrides) -> App:
 
 def at(seconds: float) -> datetime:
     return T0 + timedelta(seconds=seconds)
+
+
+RK = "AAAQ-EAYE-AUDA-OCAJ-BIFQ-YDIO-B4IB-CEQT"  # test recovery keys (DB-32)
+RK2 = "CQKR-MFYY-DENB-WHA5-DYPS-AIJC-EMSC-KJRH"
+XRW = {"X-Requested-With": "daybook"}
+
+
+def open_vault(client, key: str = RK):
+    """Set up the signed-in account's recovery key, or unlock with it if it has one."""
+    r = client.post("/api/vault/setup", headers=XRW, json={"recovery_key": key})
+    if r.status_code == 409:
+        r = client.post("/api/vault/unlock", headers=XRW, json={"recovery_key": key})
+    assert r.status_code == 200, r.text
+    return r

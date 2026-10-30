@@ -110,21 +110,21 @@ def session_view(state: SessionState, now: datetime, suggestions: list[str] | No
 
 
 def _save(app: App, user: User, state: SessionState, etag: str | None) -> str:
-    return st.save(app.store, user.prefix, state, etag)
+    return st.save(app.store_for(user), user.prefix, state, etag)
 
 
 def _save_trace(app: App, user: User, state: SessionState, seq: int, trace: Trace, **meta) -> dict:
     d = trace.finish(**meta)
-    key = f"traces/{user.uid}/{state.local_date}/{state.id}/{seq:03}.json"
+    key = f"{user.prefix}traces/{state.local_date}/{state.id}/{seq:03}.json"
     try:
-        app.store.put(key, Trace.dumps(d), content_type="application/json")
+        app.store_for(user).put(key, Trace.dumps(d), content_type="application/json")
     except Exception:
         log_event(event="trace_write_failed", session_id=state.id)
     return d
 
 
 def active_pointer(app: App, user: User) -> str | None:
-    b = app.store.get(f"{user.prefix}active.json")
+    b = app.store_for(user).get(f"{user.prefix}active.json")
     if not b:
         return None
     import json
@@ -135,7 +135,7 @@ def active_pointer(app: App, user: User) -> str | None:
 def _set_active(app: App, user: User, sid: str | None) -> None:
     import json
 
-    app.store.put(f"{user.prefix}active.json", json.dumps({"session_id": sid}).encode())
+    app.store_for(user).put(f"{user.prefix}active.json", json.dumps({"session_id": sid}).encode())
 
 
 # ------------------------------------------------------------------ speaking (Chat + guards)
@@ -213,7 +213,7 @@ async def start_session(
 ) -> SessionState:
     sid_active = active_pointer(app, user)
     if sid_active:
-        loaded = st.load(app.store, user.prefix, sid_active)
+        loaded = st.load(app.store_for(user), user.prefix, sid_active)
         if loaded and loaded[0].status == "active":
             if phases.past_grace(loaded[0], now):
                 await end_session(app, user, sid_active, "time_limit", now)
@@ -355,7 +355,7 @@ async def handle_turn(
     now: datetime,
 ) -> dict:
     for attempt in range(3):
-        loaded = st.load(app.store, user.prefix, sid)
+        loaded = st.load(app.store_for(user), user.prefix, sid)
         if loaded is None:
             raise SessionError(404, "not_found", "No such session.")
         state, etag = loaded
@@ -1122,7 +1122,7 @@ async def _recall(app, user, state, label, text, trace, now):
 
 async def end_session(app: App, user: User, sid: str, reason: str, now: datetime) -> SessionState:
     for _ in range(3):
-        loaded = st.load(app.store, user.prefix, sid)
+        loaded = st.load(app.store_for(user), user.prefix, sid)
         if loaded is None:
             raise SessionError(404, "not_found", "No such session.")
         state, etag = loaded
@@ -1146,10 +1146,6 @@ async def end_session(app: App, user: User, sid: str, reason: str, now: datetime
 async def _finish(app: App, user: User, state: SessionState, now: datetime) -> None:
     if active_pointer(app, user) == state.id:
         _set_active(app, user, None)
-    app.dispatch(
-        "finalize_session",
-        uid=user.uid,
-        prefix=user.prefix,
-        sandbox_id=user.sandbox_id,
-        session_id=state.id,
-    )
+    from daybook.worker import job_identity
+
+    app.dispatch("finalize_session", session_id=state.id, **job_identity(app, user))

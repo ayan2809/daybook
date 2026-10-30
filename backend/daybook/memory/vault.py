@@ -6,7 +6,9 @@ write(fn):  fresh copy → BEGIN → fn(conn) → COMMIT → PUT If-Match <old E
             run fn again (fn must be re-runnable), at most 3 tries. Network calls (LLM, embeddings)
             must happen before write(), never inside fn.
 
-A `Vault` is identified by its blob key (`users/owner/memory.db`, `demo/<id>/memory.db`).
+A `Vault` is identified by its blob key (`users/<folder>/memory.db`, `demo/<id>/memory.db`). An
+account's blob is sealed (DB-32): the Vault reads and writes through a SealedStore, so only the
+local working copy in the Lambda's /tmp is plain, for the life of that container.
 """
 
 from __future__ import annotations
@@ -129,12 +131,15 @@ class VaultRegistry:
         self._vaults: OrderedDict[str, Vault] = OrderedDict()
         self._lock = threading.Lock()
 
-    def get(self, key: str) -> Vault:
+    def get(self, key: str, store: BlobStore | None = None) -> Vault:
+        """`store` is the caller's view (sealed for an account, DB-32); the local copy is plain."""
         with self._lock:
             v = self._vaults.get(key)
             if v is None:
-                v = Vault(self.store, key, self.cache_dir, self.embed_dim)
+                v = Vault(store or self.store, key, self.cache_dir, self.embed_dim)
                 self._vaults[key] = v
+            elif store is not None:
+                v.store = store
             self._vaults.move_to_end(key)
             while len(self._vaults) > MAX_CACHED:
                 _, old = self._vaults.popitem(last=False)

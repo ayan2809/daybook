@@ -601,8 +601,9 @@ The flow:
   - `elevenlabs`: `eleven_flash_v2_5`, voice Sarah (`EXAVITQu4vr4xnSDxMaL`), MP3. The live default (DB-26).
   - `gemini`: `gemini-3.8-flash-lite-tts`, voice Sulafat, 24 kHz WAV. The current default.
   - `fake`: a short silent WAV.
-- **Cache:** audio is cached in the blob store under `tts-cache/{sha}.wav|mp3`, keyed by provider,
-  voice and text, so repeated lines (templates, goodbyes) cost nothing.
+- **Cache:** audio is cached in the blob store, keyed by provider, voice and text, so repeated
+  lines (templates, goodbyes) cost nothing: shared `tts-cache/` for the demo, and inside the
+  account's sealed folder for an account, because its replies echo what the user said (DB-32).
 - **Speech text:** `voice/normalize.py` rewrites text for speech ("p99" becomes "p ninety-nine",
   "%" becomes "percent", and dates and ranges are spelled out) without changing the displayed text.
 
@@ -617,8 +618,8 @@ tests). On AWS it will invoke the worker Lambda asynchronously. Jobs live in `wo
 |---|---|
 | `finalize_session` | §9 |
 | `session_judge` | scores the finished conversation (asked one question at a time, no advice, numbers right, wrap named the open questions…) and stores the scores on the session; Admin flags low scores |
-| `reminder_tick` | every minute locally for every account; on AWS each account's own two EventBridge schedules fire at its exact times and name the account (`push/schedules.py`, DB-29): for each reminder day, a first nudge at your time and an optional second nudge; skipped if you already reflected; logged per day so a nudge is sent once; endpoints answering `410 Gone` are deleted. Body: "How did today go? 2 numbers to confirm from yesterday." |
-| `cleanup_stale_sessions` | ends sessions that were hidden for over 120 s with no newer turn, or are over limit + 15 min; retries queued or failed finalizes |
+| `reminder_tick` | every minute locally for every account; on AWS each account's own two EventBridge schedules fire at its exact times and name the account's folder (`push/schedules.py`, DB-29). It reads only the reminder record (`push/notify.py`, DB-32): for each reminder day, a first nudge at your time and an optional second nudge; skipped if you already reflected; logged per day so a nudge is sent once; endpoints answering `410 Gone` are deleted. Body: "How did today go? 2 numbers to confirm from yesterday." |
+| `cleanup_stale_sessions` | demo sandboxes: ends sessions that were hidden for over 120 s with no newer turn, or are over limit + 15 min. Accounts are sealed (DB-32), so `GET /api/today` does the same for the caller and retries its queued or failed finalizes |
 
 **About the `idle` signal (DB-13).** `pagehide` sends `end` with reason `idle` through
 `navigator.sendBeacon`. This is a soft signal: the server only marks `hidden_at`, and cleanup ends
@@ -682,20 +683,19 @@ Cost per call comes from `obs/pricing.yaml`. Prices were last checked on 2026-10
 
 - **Errors** always come back as `{"error": {"code", "message", ...}}`, including validation and
   unhandled errors.
-- **Accounts (DB-29).** Three roles: `owner` (Ayan: his vault `users/owner/` and the Admin pages),
-  `user` (anyone else who signs in with Google: a private vault `users/<uid>/`) and `demo`.
+- **Accounts (DB-29, DB-32).** Three roles: `owner` (Ayan: the Admin pages), `user` (anyone else
+  who signs in with Google) and `demo`. Each account has its own sealed folder (§18.1).
   - **Google sign-in is also sign-up.** The landing page shows Google's button (Identity Services,
     `components/GoogleButton.tsx`); it returns an ID token, and `POST /api/auth/google` checks it
     with `google-auth` (Google's keys, audience = `GOOGLE_CLIENT_ID`, expiry, issuer) and requires a
-    verified email (`engine/accounts.py`). An email in `OWNER_EMAILS` maps to the owner. Anyone
-    else gets uid `g` + 24 hex of sha256(`google:<sub>`), so no Google id appears in a key, and an
-    `accounts/<uid>.json` record (email, name). `ALLOWED_EMAILS` (empty = anyone) and
-    `MAX_ACCOUNTS` (25) limit sign-ups.
+    verified email (`engine/accounts.py`). The email is checked against `OWNER_EMAILS`,
+    `ALLOWED_EMAILS` (empty = anyone) and `MAX_ACCOUNTS` (25) in memory and never written down.
   - **Owner key** (a backup way in): a long random key, stored only as a hash (`make owner-key`),
-    compared in constant time.
-  - Logins are rate limited to 5 per minute. The session is a signed cookie `db_session`
-    (itsdangerous; `HttpOnly`, `Secure`, `SameSite=Strict`) holding the role, uid and email, valid
-    180 days for accounts and 24 hours for a demo.
+    compared in constant time. It opens the same owner account, which still needs its recovery key.
+  - Logins are rate limited to 5 per minute and vault unlocks to 10. The session is a signed cookie
+    `db_session` (itsdangerous; `HttpOnly`, `Secure`, `SameSite=Strict`) holding the role, account
+    id, email and, once unlocked, the vault key (encrypted with a server key). It's valid 180 days
+    for accounts and 24 hours for a demo.
 - **CSRF:** every mutating request needs `X-Requested-With: daybook`. The one exception is
   `POST /sessions/{id}/end`, because `sendBeacon` can't set headers (DB-11).
 - **Origin lock:** when `ORIGIN_VERIFY` is set, requests must carry the secret `X-Origin-Verify`
@@ -711,12 +711,63 @@ Cost per call comes from `obs/pricing.yaml`. Prices were last checked on 2026-10
   Function (`daybook-viewer-ip`) writes the viewer's IP into `X-Viewer-IP`; the app trusts it
   only on requests that carry the `X-Origin-Verify` secret.
 - **Roles:** `account_only` (owner or user) guards push, exports and data delete; `owner_only`
-  guards Admin. Every request reads and writes only the signed-in user's own prefix, so no account
+  guards Admin. Every request reads and writes only the signed-in user's own folder, so no account
   (or demo) can reach another's data. Deleting data as a `user` also removes the account record and
   its reminder schedules.
 - **Time travel:** `X-Debug-Now` works only locally and for demo users.
 - **Prompt injection:** the Researcher flags it, the agenda redirects, the guards still run, and
   the user's text can never trigger a write without the confirm flow.
+
+### 18.1 Sealed vaults: not even the AWS account owner can read your data (DB-32)
+
+The goal: whoever runs the AWS account (today, Ayan) can't read what any account said, and can't
+tell which data belongs to which person. Hashing everything wouldn't work, because a hash can't be
+read back, not even by you. So Daybook uses keyed hashes for the names of things and encryption
+with a key only you hold for the contents.
+
+```text
+recovery key  160 random bits, made in your browser, shown once, kept on your device
+  └─ vault key = HKDF-SHA256(recovery key)                 never stored by Daybook
+       ├─ blob key   = HKDF(vault key, "blob v1")     AES-256-GCM for every object in your folder
+       ├─ folder     = "v" + HMAC(vault key)[:24]     users/<folder>/…
+       └─ key check  = HMAC(vault key, "check v1")    the only thing the account record keeps
+
+account id  = "a" + HMAC(server key, Google sub)[:24]   accounts/<id>.json: {created, check}
+```
+
+- **What's sealed:** everything under `users/<folder>/`: the memory database, every session file
+  (the full transcript), traces, the per-account spend counter, cached voice clips of Daybook's
+  replies (they echo your words), the reminder log. An object is `DBK1 · 12-byte nonce · ciphertext`
+  with its own key path as associated data, so a blob moved to another path or another account
+  doesn't open (`storage/sealed.py`, `tests/test_privacy.py`).
+- **What names you: nothing.** The account record holds the day it was made and a key check value.
+  No email, no name (the first name Google gives at sign-in is kept only in your cookie until it's
+  written into your sealed profile). The folder name comes from your key, so the account record and
+  the folder can't be linked without it.
+- **How the key gets to the server:** your browser sends it once (`/api/vault/setup` or `/unlock`);
+  the server checks it against the key check, then puts the vault key in your session cookie,
+  encrypted with a server key. Each request opens your folder in memory and nothing else. A
+  finalize or judge job gets the key inside its async invoke event, encrypted the same way; the
+  worker doesn't log events and has no failure queue.
+- **New device:** sign in with Google, paste the recovery key once; the device remembers it.
+  Signing out removes it. **Lost key:** there's no reset. "Start over" gives you a new key and an
+  empty Daybook; the old folder stays sealed forever.
+- **Reminders while you're away:** a scheduled reminder fires with no key around, so it reads one
+  small record sealed with a *server* key (`notify.json`): push endpoints, reminder times and time
+  zone, the last day you reflected and how many questions are open. No words.
+- **Background cleanup:** the nightly job can't open an account's sessions, so it only tidies demo
+  sandboxes. An account's stale session ends, and a queued finalize is retried, the next time it
+  opens Today.
+- **What this does not protect against, honestly:**
+  - The server decrypts in memory to run your session. Gemini receives the text of each turn, and
+    ElevenLabs the replies it speaks.
+  - Someone with deploy rights could ship code that copies keys as they pass. That would show in
+    the CloudFormation and CloudTrail history, but it is possible.
+  - Object counts, sizes and timestamps are visible.
+  - `ALLOWED_EMAILS` and `OWNER_EMAILS` are lists the operator writes.
+  - Rotating `session_signing_key` would change every account id. Don't rotate it until a
+    separate pepper exists (RQ-15).
+- **The demo** isn't sealed: its data is made up and deleted after two days.
 
 ---
 
@@ -780,18 +831,18 @@ All keys live in one bucket, or under `data/local/` (fake mode) and `data/local-
 on a laptop.
 
 ```text
-users/owner/memory.db                    the owner's vault
-users/owner/sessions/{sid}.json          short-term memory per session
-users/owner/active.json                  pointer to the running session
-users/owner/reminder-log/{date}.json     which nudges were sent today
-users/{uid}/…                            the same for each Google account (+ spend/{IST date}.json)
-accounts/{uid}.json                      a Google account: email, name, created_at
-demo/{sandbox}/memory.db | sessions/ | caps.json      one prefix per demo sandbox
-traces/{uid}/{date}/{sid}/{seq}.json     per-turn traces
-traces/{uid}/{date}/jobs/{job}-{id}.json finalize / judge / ask traces
+users/{folder}/memory.db                 an account's vault           ┐
+users/{folder}/sessions/{sid}.json       short-term memory per session │ all sealed with the
+users/{folder}/active.json               pointer to the running session│ account's key (§18.1)
+users/{folder}/traces/{date}/…           per-turn and job traces       │
+users/{folder}/spend/{IST date}.json     the account's spend counter   │
+users/{folder}/tts-cache/{sha}.mp3       voice clips of its replies    ┘
+users/{folder}/notify.json               reminder record (sealed with a server key; no words)
+accounts/{account id}.json               {created, check}: no email, no name
+demo/{sandbox}/memory.db | sessions/ | traces/ | caps.json   one plain prefix per demo sandbox
 spend/{IST date}.json                    spend breaker counter
 demo-caps/{IST date}.json                demo daily caps
-tts-cache/{sha}.wav|mp3                  synthesized voice lines
+tts-cache/{sha}.wav|mp3                  the demo's voice clips (shared; an account's are in its folder)
 ```
 
 ---

@@ -15,6 +15,7 @@ from daybook.engine import accounts
 from daybook.engine.app import App, User
 from daybook.memory import export, repo
 from daybook.obs.log import log_event
+from daybook.push import notify
 from daybook.push.reminders import DEFAULT_REMINDER
 
 router = APIRouter()
@@ -95,6 +96,11 @@ def put_settings(body: dict, app: App = Depends(app_dep), user: User = Depends(c
 
     app.vault(user).write(write)
     out = read_settings(app, user)
+    notify.for_user(  # what a reminder needs while you're away (DB-32)
+        app,
+        user,
+        lambda r: r.update(reminder=out["reminder"], tz=out["profile"]["timezone"]),
+    )
     s = app.settings
     if s.scheduler_role_arn and s.worker_function_arn and user.is_account and (rem or profile):
         from daybook.push.schedules import sync_reminder_schedules
@@ -122,16 +128,15 @@ class PushSub(BaseModel):
 def push_subscribe(body: PushSub, app: App = Depends(app_dep), user: User = Depends(account_only)):
     if not body.keys or not body.keys.get("p256dh") or not body.keys.get("auth"):
         raise ApiError(422, "validation", "Subscription keys missing.")
+    sub = {"endpoint": body.endpoint, "p256dh": body.keys["p256dh"], "auth": body.keys["auth"]}
 
-    def write(conn):
-        conn.execute(
-            "INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?)"
-            " ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth,"
-            " failures = 0",
-            (body.endpoint, body.keys["p256dh"], body.keys["auth"], repo.now_iso()),
-        )
+    def write(r: dict) -> None:
+        r["subs"] = [x for x in r.get("subs") or [] if x["endpoint"] != body.endpoint][-4:] + [sub]
+        if not r.get("reminder"):  # first subscription: carry the current reminder times over
+            cur = read_settings(app, user)
+            r.update(reminder=cur["reminder"], tz=cur["profile"]["timezone"])
 
-    app.vault(user).write(write)
+    notify.for_user(app, user, write)
     return {"ok": True}
 
 
@@ -139,8 +144,10 @@ def push_subscribe(body: PushSub, app: App = Depends(app_dep), user: User = Depe
 def push_unsubscribe(
     body: PushSub, app: App = Depends(app_dep), user: User = Depends(account_only)
 ):
-    app.vault(user).write(
-        lambda c: c.execute("DELETE FROM push_subscriptions WHERE endpoint = ?", (body.endpoint,))
+    notify.for_user(
+        app,
+        user,
+        lambda r: r.update(subs=[x for x in r.get("subs") or [] if x["endpoint"] != body.endpoint]),
     )
     return {"ok": True}
 
@@ -152,8 +159,7 @@ def push_test(app: App = Depends(app_dep), user: User = Depends(account_only)):
     from daybook.push.webpush import VapidSender
 
     sender = VapidSender(app.settings.vapid_private_key, app.settings.site_url)
-    with app.vault(user).read() as conn:
-        subs = repo.rows(conn.execute("SELECT * FROM push_subscriptions"))
+    subs = notify.load(app, user.prefix).get("subs") or []
     sent = 0
     for s in subs:
         r = sender.send(
@@ -184,6 +190,23 @@ def export_md(app: App = Depends(app_dep), user: User = Depends(account_only)):
         md,
         media_type="text/markdown",
         headers={"Content-Disposition": 'attachment; filename="daybook.md"'},
+    )
+
+
+@router.get("/export/brain")
+def export_brain(
+    app: App = Depends(app_dep),
+    user: User = Depends(current_user),
+    now: datetime = Depends(now_dep),
+):
+    """The whole memory as one Markdown file written for an LLM to read. The demo can use it too
+    (its data is made up)."""
+    with app.vault(user).read() as conn:
+        md = export.brain(conn, now)
+    return PlainTextResponse(
+        md,
+        media_type="text/markdown",
+        headers={"Content-Disposition": 'attachment; filename="daybook-memory.md"'},
     )
 
 
