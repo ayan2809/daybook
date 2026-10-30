@@ -1,5 +1,13 @@
 # Daybook
 
+**[▶ Demo video](https://youtu.be/DEMO_VIDEO_ID)** · **[Try it live](https://d2u2cnea4n3vkc.cloudfront.net)**
+(the demo needs no sign-in)
+
+<p align="center">
+  <img src="docs/assets/daybook-demo.gif" width="300"
+       alt="Daybook asks how many alerts fired, the answer is dictated, it reads the number back, and the summary shows resume-ready bullets">
+</p>
+
 A voice-first work journal for software engineers. At the end of the day Daybook talks with you for a
 few minutes, asks short follow-up questions, and turns what you said into a memory you can search:
 achievements with resume bullets, the numbers behind them, things you learned, and questions to
@@ -12,6 +20,11 @@ close tomorrow ("you said the import got faster: by how much?").
   which numbers are allowed and how deltas are computed.
 - **The memory is one SQLite file per user**, with full-text and vector search inside it, stored as
   a blob (a local folder in development, S3 in production).
+- **Your data is sealed with a key only you hold.** Each account gets a recovery key made in the
+  browser; everything it says is encrypted with it before it's stored, and nothing in storage names
+  the person. Not even whoever runs the AWS account can read it (§18.1).
+- **Your memory goes with you.** One tap copies the whole memory as a Markdown file written for an
+  LLM, ready to paste into any AI to draft a resume or prep an appraisal.
 
 This README explains how the code works at a low level: what runs on every turn, how memory is
 stored and versioned, and where to change things. For the product spec read [plan.md](plan.md). For
