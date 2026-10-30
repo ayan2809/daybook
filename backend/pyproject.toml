@@ -1,0 +1,51 @@
+[project]
+name = "daybook"
+version = "0.1.0"
+description = "Daybook: a voice-first daily work reflection that becomes a resume-ready record"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "mangum>=0.19",
+    "pydantic>=2.8",
+    "pydantic-settings>=2.4",
+    "google-genai>=2.31,<3",
+    "numpy>=2.0",
+    "sqlite-vec>=0.1.6",
+    "itsdangerous>=2.2",
+    "pyyaml>=6.0",
+    "httpx>=0.27",
+    "pywebpush>=2.0",
+    "boto3>=1.35",
+    "cryptography>=44",  # AES-GCM sealed vaults (DB-32)
+]
+
+[dependency-groups]
+dev = [
+    "uvicorn[standard]>=0.30",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["daybook"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = ["live: needs GEMINI_API_KEY and network (skipped otherwise)"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]  # the formatter wraps code; long prompt strings stay readable
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]

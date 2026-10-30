@@ -813,7 +813,7 @@ The Researcher flags `injection_suspected`, and the trace logs it.
 
 **Goal: a judge clicks the link and sees real value within 60 seconds, with no sign-in.**
 
-- **Persona (fictional):** "Meera", a backend engineer at *Northwind Payments* (the same fictional company Resume-as-code's examples use). Seed: 10 workdays of reflections covering a ledger API, a webhook retry service, an on-call night, mentoring an intern, a blocker that got resolved, and some praise. It's built by `scripts/seed_demo.py` from `data/seed/meera.json` (written once by an LLM, reviewed, then frozen).
+- **Persona (fictional):** "Ayan", a software engineer at *Kestrel Travel* (a made-up company; none of the real Ayan's work, employer or numbers). Seed: 10 workdays of reflections in plain words, covering help-centre search, an AI trip assistant tested with the ML team, a slow nightly article import that got fixed, a production incident and its write-up, a demo page for the product team, mentoring a new junior, covering for the lead, and some praise. Patterned on how Ayan logs work in Resume-as-code (honest ownership, approximate numbers, open questions). Built by `scripts/seed_demo.py` from `data/seed/demo-persona.json` (DB-25).
 - **Dates shift on sandbox creation,** so the last reflection is always "yesterday" and its 2 pending questions are due today.
 - **Built-in demo moments:**
   - The opener references yesterday's plan.
@@ -863,7 +863,7 @@ Daybook/                            (/Volumes/Projects/Daybook, its own git repo
 │   └── tests/
 ├── frontend/   package.json · vite.config.ts · index.html · public/ · src/ (pages, components, sw.ts, api.ts, audio.ts, styles/)
 ├── evals/      data/ · personas/ · judges/ · run.py · results/
-├── data/seed/  meera.json · (built) demo-memory.db
+├── data/seed/  demo-persona.json · (built) demo-memory.db
 ├── infra/      daybook.yaml · deploy.sh · iam/daybook-deployer-policy.json
 └── scripts/    build_lambda_zip.sh · gen_vapid.py · gen_static_audio.py · seed_demo.py · owner_key.py
 ```
@@ -892,7 +892,7 @@ and side-project work) happens **Mon Oct 26 evening**; that's what makes "I use 
 | **Sat 24 (eve)** | **M0 setup + spikes.** Plan approved; local repo created (done); GitHub repo; keys (Gemini, ElevenLabs pay-as-you-go); `infra/iam/daybook-deployer-policy.json` attached (S7); skeleton repo; latency script (S5); ElevenLabs voice and model picked by ear. | Keys work from a script; Flash-Lite + TTS latency measured. |
 | **Sun 25** | **M1 engine (text only)** in the morning: schema, blob store, vault, session file, Researcher, fast pass, agenda, Chat agent, guards, phases and time budget, deep pass, pending creation; `make chat` runs a full guided session in the terminal. Router and extraction eval data drafted. **Spikes S1, S2, S3, S4, S6** in parallel: a hello-PWA on CloudFront with push to iPhone and Watch, Wispr keyboard in the installed app, audio playback, sqlite-vec on Lambda. **M2 PWA core** in the afternoon: Today, Reflect (TTS, auto-send, captured panel), Summary. | A terminal session ends in finalize with correct items and pending questions; the PWA does the same locally in a browser; spikes report go/no-go. |
 | **Mon 26 (eve)** | **M3 memory features:** pending carry-over (`close_loops`), snooze, not-quantifiable; Timeline with UI edit and versions; edit by voice (Context agent); Ask with citations and abstention. **Ayan's first real reflection** (local, Mac + Wispr). | Test script sections C–F pass locally. |
-| **Tue 27 (eve)** | **M4 deploy:** CloudFormation stack, worker, reminders tick, push from the real app, demo sandbox + Meera seed + caps + replay. | The live URL works on iPhone (installed) and Mac; the 7 pm push reaches the Watch; the judge path works in a private window. Ayan reflects on the live app. |
+| **Tue 27 (eve)** | **M4 deploy:** CloudFormation stack, worker, reminders tick, push from the real app, demo sandbox + persona seed + caps + replay. | The live URL works on iPhone (installed) and Mac; the 7 pm push reaches the Watch; the judge path works in a private window. Ayan reflects on the live app. |
 | **Wed 28 (eve)** | **M5 observability + evals:** traces, session judge, Admin page; eval runner with router, extraction, retrieval, ask, guards; fake suite in CI; **one live run** (after cost sign-off); fix the worst failures. | The Admin page shows real sessions; the eval report exists with gates. |
 | **Thu 29 (eve)** | **M6 polish:** P1 items as time allows (Remind me, % spoken, quick log, export, continuity opener); README (six questions), DECISIONS, RUNBOOK; **record a first cut of the video**. | Video draft ≤ 2:00; README complete except final numbers. |
 | **Fri 30 (eve)** | **M7 ship:** final fixes, second live eval run, final deploy, usage card screenshot, `SUBMISSION_DETAILS.md`, final video, **submit by 9 PM IST** (3 hours of buffer), build-in-public post. | Submitted. |
@@ -1043,7 +1043,7 @@ Code checks after the answer: every sentence cites at least one retrieved id, or
 | 3 | Session length | **7 minutes**, hard limit. The user can end early by voice ("let's wrap up" or "stop"). |
 | 4 | Reminders | 19:00 IST + a **second nudge at 21:00**, Mon–Fri. |
 | 5 | Work content | **Side-project and hackathon work only**; no employer work goes to the AI APIs. |
-| 6 | Demo persona | Fictional "Meera at Northwind Payments": OK. |
+| 6 | Demo persona | Fictional "Meera at Northwind Payments": OK. Later replaced by a fictional "Ayan at Kestrel Travel" in plainer words (DB-25). |
 | 7 | Domain | Default CloudFront domain; no Route 53 or ACM. |
 | 8 | Name | **Daybook.** Folder renamed to `/Volumes/Projects/Daybook`, and it's its own git repo. |
 | 9 | Spend | **At most $2 a day of API spend**, enforced by the breaker (15.1); demo caps lowered to fit. |
@@ -1226,7 +1226,7 @@ locally and in demo sandboxes; the server ignores it for the owner.
 
 | ID | Steps | Expected |
 |---|---|---|
-| L1 | Private window → live URL → "Try the demo" | Meera's sandbox in under 5 s; Today shows "2 things to confirm" |
+| L1 | Private window → live URL → "Try the demo" | The demo persona's sandbox in under 5 s; Today shows "2 things to confirm" |
 | L2 | Start a reflection, click the suggested chips only | the full flow, including a follow-up and a pending question; finished in about 3 minutes |
 | L3 | Timeline → the "50%" item → Fix by voice (or type) "it was 40%" | the read-back and update work |
 | L4 | Ask chips, including the unanswerable one | citations, and an abstention |
@@ -1251,7 +1251,7 @@ locally and in demo sandboxes; the server ignores it for the owner.
 - [ ] C3–C6, D1–D10, E1–E4, F1–F2, I1–I2, L1–L7, M1–M6 pass on the live URL
 - [ ] Ayan has reflected on every workday since Oct 26 (real usage numbers go in the README)
 - [ ] Wispr usage card screenshot (Oct 16–30) saved to `assets/wispr_usage_card.png`
-- [ ] Video ≤ 2:00, unlisted on YouTube; link in the README and the submission
+- [x] Video ≤ 2:00, unlisted on YouTube; link in the README and the submission (https://youtu.be/VZzfZ93o-I4)
 - [ ] README answers the six questions; AI use disclosed; `SUBMISSION_DETAILS.md` complete
 - [ ] Demo caps and the $2/day breaker set; the Admin spend line matches the Gemini and ElevenLabs usage pages; billing alerts on
 - [ ] Submitted before 9 PM IST

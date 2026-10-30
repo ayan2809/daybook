@@ -1,0 +1,30 @@
+{"id": "a01", "today": "2026-10-24", "question": "What did I ship in the last two weeks?", "answerable": true, "expected_keys": ["typo-fix-live", "parallel-import", "incident-writeup-alert", "assistant-demo-page"]}
+{"id": "a02", "today": "2026-10-24", "question": "Give me my strongest resume bullet.", "answerable": true, "expected_keys": ["typo-fix-live", "parallel-import", "assistant-tested"]}
+{"id": "a03", "today": "2026-10-24", "question": "Remind me of a hard week I got through.", "answerable": true, "expected_keys": ["assistant-old-refund-incident", "import-slow-blocker", "incident-writeup-alert"]}
+{"id": "a04", "today": "2026-10-24", "question": "How much did empty searches drop after the typo fix?", "answerable": true, "expected_keys": ["typo-fix-live"]}
+{"id": "a05", "today": "2026-10-24", "question": "Why was the assistant giving out the old refund rules?", "answerable": true, "expected_keys": ["assistant-old-refund-incident"]}
+{"id": "a06", "today": "2026-10-24", "question": "How long did it take to get the right refund answers back?", "answerable": true, "expected_keys": ["assistant-old-refund-incident"]}
+{"id": "a07", "today": "2026-10-24", "question": "How much faster did the nightly import get?", "answerable": true, "expected_keys": ["parallel-import", "import-slow-blocker"]}
+{"id": "a08", "today": "2026-10-24", "question": "Why was the import slow, and how did I fix it?", "answerable": true, "expected_keys": ["import-slow-cause", "parallel-import"]}
+{"id": "a09", "today": "2026-10-24", "question": "What has my lead said about my work?", "answerable": true, "expected_keys": ["lead-praise-writeup"]}
+{"id": "a10", "today": "2026-10-24", "question": "How have I been helping the new junior?", "answerable": true, "expected_keys": ["mentor-junior-onboarding", "mentor-junior-review"]}
+{"id": "a11", "today": "2026-10-24", "question": "How many test questions did the assistant get wrong?", "answerable": true, "expected_keys": ["assistant-tested"]}
+{"id": "a12", "today": "2026-10-24", "question": "What have I learned recently about the nightly import?", "answerable": true, "expected_keys": ["learn-check-edited", "learn-feed-limit"]}
+{"id": "a13", "today": "2026-10-24", "question": "What share of help searches came back empty before I started on it?", "answerable": true, "expected_keys": ["search-zero-results", "typo-fix-live"]}
+{"id": "a14", "today": "2026-10-24", "question": "Why did we fix spelling mistakes before anything else in search?", "answerable": true, "expected_keys": ["typo-fix-decision"]}
+{"id": "a15", "today": "2026-10-24", "question": "How far did the search load test get?", "answerable": true, "expected_keys": ["search-load-test-progress"]}
+{"id": "a16", "today": "2026-10-24", "question": "What was I planning to do next?", "answerable": true, "expected_keys": ["plan-finish-load-test"]}
+{"id": "a17", "today": "2026-10-24", "question": "What does the alert I added for the import actually do?", "answerable": true, "expected_keys": ["incident-writeup-alert"]}
+{"id": "a18", "today": "2026-10-24", "question": "What was my part in moving search to the new servers?", "answerable": true, "expected_keys": ["search-servers-review"]}
+{"id": "a19", "today": "2026-10-24", "question": "What did I do on the trip assistant in the week of October 19?", "answerable": true, "expected_keys": ["assistant-tested", "assistant-demo-page", "pm-praise-demo"]}
+{"id": "a20", "today": "2026-10-24", "question": "What did I do about the noisy search alerts?", "answerable": true, "expected_keys": ["search-alert-tuning"]}
+{"id": "a21", "today": "2026-10-24", "question": "When did I present to the CFO?", "answerable": false, "expected_keys": []}
+{"id": "a22", "today": "2026-10-24", "question": "How much did I cut cloud costs?", "answerable": false, "expected_keys": []}
+{"id": "a23", "today": "2026-10-24", "question": "When did I get promoted?", "answerable": false, "expected_keys": []}
+{"id": "a24", "today": "2026-10-24", "question": "What did I build for the mobile app?", "answerable": false, "expected_keys": []}
+{"id": "a25", "today": "2026-10-24", "question": "How many extra bookings did the trip assistant bring in?", "answerable": false, "expected_keys": []}
+{"id": "a26", "today": "2026-10-24", "question": "Which conference talk did I give this year?", "answerable": false, "expected_keys": []}
+{"id": "a27", "today": "2026-10-24", "question": "What did my manager write in my last performance review?", "answerable": false, "expected_keys": []}
+{"id": "a28", "today": "2026-10-24", "question": "How many people have I interviewed for the team?", "answerable": false, "expected_keys": []}
+{"id": "a29", "today": "2026-10-24", "question": "What did I ship in August?", "answerable": false, "expected_keys": []}
+{"id": "a30", "today": "2026-10-24", "question": "What did I change on the hotel booking page?", "answerable": false, "expected_keys": []}
