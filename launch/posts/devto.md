@@ -12,6 +12,13 @@ I had to rebuild nine months of work from memory. When I checked my own notes, 2
 
 So I built Daybook, for No Hands: The Wispr Challenge by WeMakeDevs and Wispr Flow.
 
+{% youtube VZzfZ93o-I4 %}
+
+> **Try it out right away:**
+> - 🌐 **Live App (no sign-in needed):** [https://d2u2cnea4n3vkc.cloudfront.net](https://d2u2cnea4n3vkc.cloudfront.net) (tap "Try the demo")
+> - 📺 **Demo Video (1:58):** [https://youtu.be/VZzfZ93o-I4](https://youtu.be/VZzfZ93o-I4)
+> - 💻 **GitHub Repo:** [https://github.com/ayan2809/daybook](https://github.com/ayan2809/daybook)
+
 ## What Daybook does
 
 Every evening I have a five-minute voice conversation with it. It asks one question at a time, and it asks the follow-ups a good manager would. "You said the import got faster. By how much?"

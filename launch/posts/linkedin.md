@@ -2,6 +2,9 @@ In October I sat down to update my resume and had to rebuild nine months of work
 
 So I built Daybook for the No Hands challenge from WeMakeDevs and Wispr Flow.
 
+Try the live demo (no sign-in): https://d2u2cnea4n3vkc.cloudfront.net
+2-min video walkthrough: https://youtu.be/VZzfZ93o-I4
+
 Every evening it has a five-minute voice conversation with me. It asks the follow-ups a good manager would ("by how much?") and turns my answers into a searchable memory with resume bullets. It never invents a number: every figure has to be in my own words. If I don't know one yet, it becomes a question that comes back tomorrow.
 
 Wispr Flow is how I talk to it and how I built it. Every answer is dictated, as were the specs, prompts and commit messages. Away from my laptop, the Flow Scratchpad and Note Taker catch ideas as I say them, and later they become prompts for my coding agent.
