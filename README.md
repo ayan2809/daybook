@@ -1,6 +1,6 @@
 # Daybook
 
-**[▶ Demo video](https://youtu.be/VZzfZ93o-I4)** · **[Try it live](https://d2u2cnea4n3vkc.cloudfront.net)**
+**[▶ Demo video](https://youtu.be/VZzfZ93o-I4)** · **[Try it live](https://d2u2cnea4n3vkc.cloudfront.net)** · **[Read on Dev.to](https://dev.to/banana-coder/i-lost-the-numbers-behind-nine-months-of-work-so-i-built-a-voice-journal-that-asks-for-them-51ag)** · **[Read on Hashnode](https://banana-coder.hashnode.dev/daybook-a-voice-journal-where-code-owns-the-numbers-and-only-you-hold-the-key)**
 (the demo needs no sign-in)
 
 <p align="center">
